@@ -1,0 +1,1079 @@
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>BusMate — Full Prototype</title>
+
+  <!-- Tailwind CSS (Play CDN) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Leaflet CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- SheetJS -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <style>
+    body { -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; }
+    .mapbox{ width:100%; height:56vh; min-height:260px; border-radius:12px; overflow:hidden; box-shadow:0 10px 30px rgba(2,6,23,0.06); }
+    .small-muted{ color:#64748b; font-size:.9rem; }
+    .page-back{ margin-bottom:.75rem; }
+    .hidden{ display:none!important; }
+    .tile{ transition:transform .08s ease; }
+    .tile:active{ transform:translateY(2px); }
+    @media (max-width:768px){ .mapbox{ height:64vh; } }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-900">
+
+<!-- Header -->
+<header class="bg-blue-600 text-white sticky top-0 z-50">
+  <div class="max-w-6xl mx-auto flex items-center justify-between px-4 py-3">
+    <div class="flex items-center gap-3">
+      <div id="logoBox" class="w-10 h-10 bg-white rounded-md flex items-center justify-center text-blue-600 font-bold">BM</div>
+      <div>
+        <div id="companyTitle" class="font-semibold">BusMate</div>
+        <div id="companySub" class="text-xs opacity-90">Vehicle Tracking Prototype</div>
+      </div>
+    </div>
+    <div class="flex items-center gap-4">
+      <div id="roleLabel" class="text-sm text-slate-100">—</div>
+      <div class="text-sm">Welcome <span id="userLabel">Guest</span></div>
+      <button id="logoutBtn" class="hidden bg-white text-blue-600 px-3 py-1 rounded" onclick="logout()">Logout</button>
+    </div>
+  </div>
+</header>
+
+<main class="max-w-6xl mx-auto p-4 space-y-6">
+
+  <!-- LOGIN PAGE -->
+  <section id="pageLogin" class="">
+    <div class="bg-white rounded-xl shadow p-6 max-w-xl mx-auto">
+      <h1 class="text-2xl font-bold">BusMate</h1>
+      <p class="text-sm text-slate-500 mt-1">Sign in — Master / Admin / Operator</p>
+
+      <label class="block mt-4 text-sm">Username</label>
+      <input id="loginUser" class="w-full border rounded px-3 py-2" placeholder="e.g. bhagyesh or admin" />
+
+      <label class="block mt-3 text-sm">Password</label>
+      <input id="loginPass" type="password" class="w-full border rounded px-3 py-2" placeholder="password" />
+
+      <div class="flex gap-2 mt-4">
+        <button class="bg-blue-600 text-white px-4 py-2 rounded" onclick="handleLogin()">Login</button>
+        <button class="bg-slate-100 px-4 py-2 rounded" onclick="showHelp()">Help</button>
+      </div>
+
+      <p class="text-xs text-slate-500 mt-4">Managed by: <a href="mailto:bhagyeshlimbad@gmail.com" class="underline">bhagyeshlimbad@gmail.com</a></p>
+      <div class="text-xs text-slate-400 mt-2">Test accounts: <b>bhagyesh/bhagyesh</b> (Master), <b>admin/admin</b> (Admin), <b>operator/operator</b> (Operator)</div>
+    </div>
+  </section>
+
+  <!-- HOME / DASHBOARD -->
+  <section id="pageHome" class="hidden">
+    <div class="grid gap-4">
+      <div class="bg-white rounded-xl shadow p-4 flex items-center justify-between">
+        <div>
+          <div id="homeCompanyTitle" class="text-lg font-semibold"></div>
+          <div id="homeCompanySub" class="text-sm text-slate-500">Dashboard</div>
+        </div>
+        <div class="text-right">
+          <div id="homeUserLabel" class="font-medium"></div>
+          <div id="homeRole" class="text-xs text-slate-200"></div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <button id="tileCompanies" class="tile hidden bg-white rounded-xl shadow p-4 text-left" onclick="go('pageMasterAdmin')">
+          <div class="font-semibold">Company Management</div>
+          <div class="text-sm text-slate-500">Create / Enable / Disable</div>
+        </button>
+
+        <button id="tileUsers" class="tile hidden bg-white rounded-xl shadow p-4 text-left" onclick="go('pageUsers')">
+          <div class="font-semibold">Manage Users</div>
+          <div class="text-sm text-slate-500">Create / Edit / Assign</div>
+        </button>
+
+        <button id="tileLocations" class="tile hidden bg-white rounded-xl shadow p-4 text-left" onclick="go('pageLocations')">
+          <div class="font-semibold">Manage Locations</div>
+          <div class="text-sm text-slate-500">Stops / Radius / Msg</div>
+        </button>
+
+        <button id="tileTrips" class="tile hidden bg-white rounded-xl shadow p-4 text-left" onclick="go('pageTripSetup')">
+          <div class="font-semibold">Manage Trips</div>
+          <div class="text-sm text-slate-500">Create / Order / Save</div>
+        </button>
+
+        <button id="tileStart" class="tile hidden bg-white rounded-xl shadow p-4 text-left" onclick="go('pageStartTrip')">
+          <div class="font-semibold">Start Trip</div>
+          <div class="text-sm text-slate-500">Start & Track</div>
+        </button>
+
+        <button id="tileReports" class="tile hidden bg-white rounded-xl shadow p-4 text-left" onclick="go('pageReports')">
+          <div class="font-semibold">Reports</div>
+          <div class="text-sm text-slate-500">Trip history & Logs</div>
+        </button>
+      </div>
+
+      <div class="bg-white rounded-xl shadow p-4">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div><div class="text-sm text-slate-500">Locations</div><div id="statLocations" class="font-semibold">0</div></div>
+          <div><div class="text-sm text-slate-500">Trips</div><div id="statTrips" class="font-semibold">0</div></div>
+          <div><div class="text-sm text-slate-500">Companies</div><div id="statCompanies" class="font-semibold">0</div></div>
+          <div><div class="text-sm text-slate-500">Runs</div><div id="statRuns" class="font-semibold">0</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MASTER ADMIN (Companies) -->
+  <section id="pageMasterAdmin" class="hidden">
+    <div class="bg-white rounded-xl shadow p-4">
+      <div class="page-back">
+        <button class="bg-gray-200 px-3 py-1 rounded" onclick="go('pageHome')">← Back</button>
+      </div>
+      <div class="flex items-center justify-between">
+        <h2 class="text-lg font-semibold">Master Admin — Companies</h2>
+        <div>
+          <button class="bg-green-600 text-white px-3 py-1 rounded" onclick="openCompanyForm()">Create Company</button>
+        </div>
+      </div>
+
+      <div class="mt-4">
+        <ul id="companyList" class="space-y-3"></ul>
+      </div>
+    </div>
+
+    <div id="companyModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div class="bg-white p-4 rounded-xl w-96">
+        <h3 class="font-semibold">Create / Edit Company</h3>
+        <label class="block mt-2 text-sm">Company Name</label>
+        <input id="companyNameInp" class="w-full border rounded px-3 py-2" />
+        <label class="block mt-2 text-sm">Logo URL (optional)</label>
+        <input id="companyLogoInp" class="w-full border rounded px-3 py-2" />
+        <div class="flex gap-2 mt-3">
+          <button class="bg-blue-600 text-white px-3 py-1 rounded" onclick="saveCompany()">Save</button>
+          <button class="bg-slate-100 px-3 py-1 rounded" onclick="closeCompanyModal()">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- USERS (global / company-scoped) -->
+  <section id="pageUsers" class="hidden">
+    <div class="bg-white rounded-xl shadow p-4">
+      <div class="page-back"><button class="bg-gray-200 px-3 py-1 rounded" onclick="go('pageHome')">← Back</button></div>
+      <div class="flex items-center justify-between">
+        <h2 class="text-lg font-semibold">Users</h2>
+        <div><button class="bg-green-600 text-white px-3 py-1 rounded" onclick="openUserForm()">Add User</button></div>
+      </div>
+      <div class="mt-4">
+        <ul id="usersList" class="space-y-3"></ul>
+      </div>
+    </div>
+
+    <div id="userModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div class="bg-white p-4 rounded-xl w-96">
+        <h3 class="font-semibold">Add / Edit User</h3>
+        <label class="block mt-2 text-sm">Username</label>
+        <input id="userNameInp" class="w-full border rounded px-3 py-2" />
+        <label class="block mt-2 text-sm">Password</label>
+        <input id="userPassInp" class="w-full border rounded px-3 py-2" />
+        <label class="block mt-2 text-sm">Display Name</label>
+        <input id="userDisplayInp" class="w-full border rounded px-3 py-2" />
+        <label class="block mt-2 text-sm">Role</label>
+        <select id="userRoleInp" class="w-full border rounded px-3 py-2"><option>Admin</option><option>Operator</option></select>
+        <label class="block mt-2 text-sm">Company</label>
+        <select id="userCompanyInp" class="w-full border rounded px-3 py-2"></select>
+        <div class="flex gap-2 mt-3">
+          <button class="bg-blue-600 text-white px-3 py-1 rounded" onclick="saveUser()">Save</button>
+          <button class="bg-slate-100 px-3 py-1 rounded" onclick="closeUserModal()">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- LOCATIONS -->
+  <section id="pageLocations" class="hidden">
+    <div class="grid md:grid-cols-2 gap-4">
+      <div class="bg-white rounded-xl shadow p-4">
+        <div class="page-back"><button class="bg-gray-200 px-3 py-1 rounded" onclick="go('pageHome')">← Back</button></div>
+        <h3 class="font-semibold">Add / Edit Location</h3>
+
+        <label class="block mt-3 text-sm">Name</label>
+        <input id="locName" class="w-full border rounded px-3 py-2" />
+        <div class="grid grid-cols-2 gap-2 mt-2">
+          <div><label class="text-sm">Latitude</label><input id="locLat" class="w-full border rounded px-3 py-2" /></div>
+          <div><label class="text-sm">Longitude</label><input id="locLng" class="w-full border rounded px-3 py-2" /></div>
+        </div>
+        <label class="block mt-2 text-sm">Radius (meters)</label>
+        <input id="locRadius" type="number" value="500" class="w-full border rounded px-3 py-2" />
+        <label class="block mt-2 text-sm">Announcement message</label>
+        <input id="locMsg" class="w-full border rounded px-3 py-2" placeholder="Custom announcement text (played during trip)" />
+        <div class="flex gap-2 mt-3">
+          <button class="bg-green-600 text-white px-4 py-2 rounded" onclick="saveLocation()">Save</button>
+          <button class="bg-slate-100 px-4 py-2 rounded" onclick="useCurrentLocation()">Use Current GPS</button>
+          <button class="bg-slate-200 px-4 py-2 rounded" onclick="testAnnouncement()">Test Announcement</button>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl shadow p-4">
+        <h3 class="font-semibold">Map Picker</h3>
+        <div id="locMap" class="mapbox mt-2"></div>
+
+        <h4 class="mt-4">Saved Locations</h4>
+        <ul id="locationList" class="mt-2 space-y-2"></ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- TRIPS -->
+  <section id="pageTripSetup" class="hidden">
+    <div class="page-back"><button class="bg-gray-200 px-3 py-1 rounded" onclick="go('pageHome')">← Back</button></div>
+
+    <div class="bg-white rounded-xl shadow p-4">
+      <h3 class="font-semibold">Manage Trips</h3>
+
+      <div class="grid md:grid-cols-3 gap-4 mt-4">
+        <div>
+          <label class="text-sm">Trip Name</label>
+          <input id="tripName" class="w-full border rounded px-3 py-2" />
+          <label class="text-sm mt-2">Available Locations</label>
+          <div id="availList" class="border rounded mt-2 p-2 h-64 overflow-auto"></div>
+        </div>
+
+        <div class="flex flex-col items-center justify-center gap-2">
+          <button class="bg-blue-600 text-white px-4 py-2 rounded" onclick="addPlanned()">Add →</button>
+          <button class="bg-slate-200 px-4 py-2 rounded" onclick="removePlanned()">← Remove</button>
+          <button class="bg-slate-200 px-4 py-2 rounded" onclick="movePlanned(-1)">↑ Up</button>
+          <button class="bg-slate-200 px-4 py-2 rounded" onclick="movePlanned(1)">↓ Down</button>
+          <button class="bg-red-500 text-white px-4 py-2 rounded" onclick="clearPlanned()">Clear</button>
+        </div>
+
+        <div>
+          <label class="text-sm">Planned Trip (ordered)</label>
+          <div id="plannedList" class="border rounded mt-2 p-2 h-64 overflow-auto"></div>
+          <div class="flex gap-2 mt-3">
+            <button class="bg-green-600 text-white px-4 py-2 rounded" onclick="saveTrip()">Save Trip</button>
+          </div>
+        </div>
+      </div>
+
+      <h4 class="mt-4">Saved Trips</h4>
+      <ul id="tripList" class="mt-2 space-y-2"></ul>
+    </div>
+  </section>
+
+  <!-- START TRIP + ONGOING -->
+  <section id="pageStartTrip" class="hidden">
+    <div id="startPanel" class="bg-white rounded-xl shadow p-4">
+      <div class="page-back"><button class="bg-gray-200 px-3 py-1 rounded" onclick="go('pageHome')">← Back</button></div>
+      <h3 class="font-semibold">Start Trip</h3>
+      <label class="block mt-3 text-sm">Choose trip</label>
+      <select id="startTripSelect" class="w-full border rounded px-3 py-2"></select>
+      <div class="flex gap-2 mt-3">
+        <button class="bg-blue-600 text-white px-4 py-2 rounded" onclick="startSelectedTrip()">Start Trip</button>
+      </div>
+    </div>
+
+    <div id="ongoingPanel" class="hidden mt-4">
+      <div class="page-back"><button class="bg-gray-200 px-3 py-1 rounded" onclick="go('pageStartTrip')">← Back</button></div>
+
+      <div>
+        <div id="runMap" class="mapbox"></div>
+      </div>
+
+      <div class="mt-3 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <label class="text-sm small-muted">Auto Refresh:</label>
+          <select id="autoRefreshSelect" class="border rounded px-2 py-1 bg-white" onchange="setAutoRefreshInterval()">
+            <option value="5">5s</option>
+            <option value="10" selected>10s</option>
+            <option value="15">15s</option>
+            <option value="20">20s</option>
+          </select>
+          <div class="text-sm text-slate-500 ml-2">Device GPS mode</div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button class="bg-white border px-3 py-1 rounded" onclick="centerCurrentGPS()">Current Location</button>
+          <button class="bg-red-600 text-white px-3 py-1 rounded" onclick="endTrip()">End Trip</button>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl shadow p-4 mt-4">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <div class="flex flex-wrap gap-2 items-center">
+            <button class="bg-white border px-3 py-2 rounded shadow" onclick="centerMap()">Center Map</button>
+            <button class="bg-white border px-3 py-2 rounded shadow" onclick="manualAnn()">Manual Announcement</button>
+            <div class="flex items-center gap-2 pl-2">
+              <div class="text-xs small-muted">Volume</div>
+              <input id="volControl" type="range" min="0" max="1" step="0.1" value="1" onchange="setVolume(this.value)" />
+            </div>
+          </div>
+
+          <div class="text-sm text-slate-600">
+            <div><span class="font-semibold" id="ongoingTripName">—</span></div>
+            <div class="text-xs text-slate-400">Started: <span id="ongoingStart">—</span></div>
+          </div>
+        </div>
+
+        <hr class="my-3"/>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <div class="text-xs small-muted">Current Latitude / Longitude</div>
+            <div class="font-mono" id="curLat">—</div>
+            <div class="font-mono" id="curLng">—</div>
+            <div class="text-xs small-muted mt-2">Current Speed</div>
+            <div id="curSpeed">—</div>
+          </div>
+
+          <div>
+            <div class="text-xs small-muted">Upcoming Stop</div>
+            <div class="font-semibold" id="upcomingName">—</div>
+            <div class="text-xs small-muted mt-2">Distance to Next</div>
+            <div id="distNext">—</div>
+            <div class="text-xs small-muted mt-2">ETA to Next</div>
+            <div id="etaNext">—</div>
+          </div>
+
+          <div>
+            <div class="text-xs small-muted">Progress</div>
+            <div class="font-semibold" id="progressStops">—</div>
+            <div class="w-full bg-slate-100 h-3 rounded mt-2 overflow-hidden">
+              <div id="progressBar" class="bg-blue-600 h-3 rounded" style="width:0%"></div>
+            </div>
+            <div class="text-xs text-slate-500 mt-2">Stops reached / total</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- REPORTS -->
+  <section id="pageReports" class="hidden">
+    <div class="page-back"><button class="bg-gray-200 px-3 py-1 rounded" onclick="go('pageHome')">← Back</button></div>
+    <div class="bg-white rounded-xl shadow p-4">
+      <div class="flex items-center justify-between">
+        <h3 class="font-semibold">Reports</h3>
+        <div>
+          <button class="bg-blue-600 text-white px-3 py-1 rounded" onclick="exportTripsExcel()">Export Trips</button>
+          <button class="bg-slate-100 px-3 py-1 rounded" onclick="exportLoginsExcel()">Export Logins</button>
+        </div>
+      </div>
+
+      <h4 class="mt-4">Trip History</h4>
+      <ul id="reportTrips" class="mt-2 space-y-2"></ul>
+
+      <h4 class="mt-4">Login Activity</h4>
+      <ul id="reportLogins" class="mt-2 space-y-2"></ul>
+    </div>
+  </section>
+
+</main>
+
+<!-- Toast -->
+<div id="toast" class="hidden fixed bottom-6 right-6 bg-slate-800 text-white px-4 py-2 rounded shadow"></div>
+
+<script>
+/* =========================
+   Storage keys and helpers
+   ========================= */
+const LS = {
+  get(k,d){ try{ return JSON.parse(localStorage.getItem(k)) ?? d; }catch(e){ return d; } },
+  set(k,v){ localStorage.setItem(k, JSON.stringify(v)); }
+};
+const K = { COMPANIES:'bm_companies', USERS:'bm_users', LOCS:'bm_locations', TRIPS:'bm_trips', RUNS:'bm_runs', LOGINS:'bm_logins', SESSION:'bm_session' };
+
+if(!LS.get(K.COMPANIES,[])) LS.set(K.COMPANIES,[]);
+if(!LS.get(K.USERS,[])) LS.set(K.USERS,[]);
+if(!LS.get(K.LOCS,[])) LS.set(K.LOCS,[]);
+if(!LS.get(K.TRIPS,[])) LS.set(K.TRIPS,[]);
+if(!LS.get(K.RUNS,[])) LS.set(K.RUNS,[]);
+if(!LS.get(K.LOGINS,[])) LS.set(K.LOGINS,[]);
+
+function uid(pref='id'){ return pref + '_' + Math.random().toString(36).slice(2,9); }
+function fmtISO(iso){ try{ return new Date(iso).toLocaleString(); } catch(e) { return iso; } }
+function toast(msg, t=2200){ const el=document.getElementById('toast'); el.textContent=msg; el.classList.remove('hidden'); setTimeout(()=>el.classList.add('hidden'), t); }
+function haversine(lat1,lon1,lat2,lon2){ const toRad=v=>v*Math.PI/180; const R=6371000; const dLat=toRad(lat2-lat1); const dLon=toRad(lon2-lon1); const a=Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2; const c=2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a)); return R*c; }
+
+/* =========================
+   Seed data if empty (companies, users, sample locations/trips)
+   ========================= */
+(function seedIfEmpty(){
+  if(LS.get(K.COMPANIES,[]).length===0){
+    const company = { id: uid('comp'), name:'Demo Transit Co', logo:'', enabled:true, createdAt:new Date().toISOString() };
+    LS.set(K.COMPANIES, [company]);
+    LS.set(K.USERS, [
+      { username:'admin', pass:'admin', role:'Admin', companyId:company.id, enabled:true, displayName:'Admin' },
+      { username:'operator', pass:'operator', role:'Operator', companyId:company.id, enabled:true, displayName:'Operator' }
+    ]);
+    const locs = [
+      { id: uid('loc'), name:'Station A', lat:21.6417, lng:69.6293, radius:500, msg:'Next stop: Station A — Please prepare to disembark.', imgData:null, companyId:company.id, createdAt:new Date().toISOString() },
+      { id: uid('loc'), name:'Station B', lat:21.6517, lng:69.6390, radius:400, msg:'Next stop: Station B — Doors will open on left.', imgData:null, companyId:company.id, createdAt:new Date().toISOString() },
+      { id: uid('loc'), name:'Station C', lat:21.6617, lng:69.6490, radius:300, msg:'Next stop: Station C — Please collect your belongings.', imgData:null, companyId:company.id, createdAt:new Date().toISOString() }
+    ];
+    LS.set(K.LOCS, locs);
+    LS.set(K.TRIPS, [{ id: uid('trip'), name:'Demo Route', locs: locs.map(l=>({ ...l })), companyId: company.id, createdAt:new Date().toISOString() }]);
+  }
+})();
+
+/* =========================
+   App runtime state
+   ========================= */
+let session = LS.get(K.SESSION, null);
+let locMap=null, locMarker=null, locCircle=null;
+let runMap=null, runMarkers=[], runCircles=[], runPolyline=null, meMarker=null, watchId=null;
+let activeRun=null, lastPosition=null;
+let ttsVolume = 1.0;
+let autoRefreshIntervalId = null;
+let editingCompanyId = null;
+let editingUser = null;
+let editingLocId = null;
+let planned = [], selectedAvail=null, selectedPlanned=null;
+
+/* =========================
+   Navigation and header
+   ========================= */
+function go(pageId){
+  document.querySelectorAll('main section').forEach(s => s.classList.add('hidden'));
+  const el = document.getElementById(pageId);
+  if(el) el.classList.remove('hidden');
+  updateHeader();
+  // page-specific
+  if(pageId==='pageLocations') setTimeout(initLocMap,80);
+  if(pageId==='pageTripSetup'){ renderAvail(); renderPlanned(); renderTripList(); }
+  if(pageId==='pageStartTrip') renderStartSelect();
+  if(pageId==='pageReports') renderReports();
+  if(pageId==='pageUsers') renderUserList();
+  if(pageId==='pageMasterAdmin') renderCompanyList();
+}
+
+/* ========== Authentication ========== */
+function handleLogin(){
+  const u = (document.getElementById('loginUser').value||'').trim();
+  const p = (document.getElementById('loginPass').value||'').trim();
+  if(!u) return alert('Enter username');
+  const lower = u.toLowerCase();
+  // Master Admin special-case
+  if(lower==='bhagyesh' && p==='bhagyesh'){
+    session = { user:'bhagyesh', role:'MasterAdmin', companyId:null, displayName:'Bhagyesh Limbad' };
+    LS.set(K.SESSION, session);
+    logLogin(session.user, session.role);
+    toast('Logged in as Master Admin');
+    go('pageHome'); return;
+  }
+  const users = LS.get(K.USERS,[]);
+  const found = users.find(x=>x.username.toLowerCase()===lower && x.pass===p);
+  if(!found) return alert('Invalid credentials');
+  if(!found.enabled) return alert('User disabled');
+  session = { user: found.username, role: found.role, companyId: found.companyId, displayName: found.displayName || found.username };
+  LS.set(K.SESSION, session);
+  logLogin(session.user, session.role);
+  toast('Logged in');
+  go('pageHome');
+}
+function logLogin(user, role){ const logs = LS.get(K.LOGINS,[]); logs.push({ user, role, time: new Date().toISOString(), device: navigator.userAgent || 'browser', ip:'0.0.0.0' }); LS.set(K.LOGINS, logs); }
+function logout(){ LS.set(K.SESSION,null); session=null; toast('Logged out'); go('pageLogin'); }
+
+/* update header/tiles based on session */
+function updateHeader(){
+  session = LS.get(K.SESSION, null);
+  document.getElementById('companyTitle').textContent = 'BusMate';
+  if(!session){
+    document.getElementById('userLabel').textContent = 'Guest';
+    document.getElementById('roleLabel').textContent = '—';
+    document.getElementById('logoutBtn').classList.add('hidden');
+    ['tileCompanies','tileUsers','tileLocations','tileTrips','tileStart','tileReports'].forEach(id=>document.getElementById(id).classList.add('hidden'));
+    document.getElementById('homeCompanyTitle').textContent = '';
+    document.getElementById('homeUserLabel').textContent = '';
+    document.getElementById('homeRole').textContent = '';
+    document.getElementById('statLocations').textContent = LS.get(K.LOCS,[]).length;
+    document.getElementById('statTrips').textContent = LS.get(K.TRIPS,[]).length;
+    document.getElementById('statCompanies').textContent = LS.get(K.COMPANIES,[]).length;
+    document.getElementById('statRuns').textContent = LS.get(K.RUNS,[]).length;
+    return;
+  }
+  document.getElementById('userLabel').textContent = session.displayName || session.user;
+  document.getElementById('roleLabel').textContent = session.role;
+  document.getElementById('logoutBtn').classList.remove('hidden');
+
+  // Tiles visibility
+  ['tileCompanies','tileUsers','tileLocations','tileTrips','tileStart','tileReports'].forEach(id=>document.getElementById(id).classList.add('hidden'));
+  if(session.user==='bhagyesh' || session.role==='MasterAdmin'){
+    ['tileCompanies','tileUsers','tileLocations','tileTrips','tileStart','tileReports'].forEach(id=>document.getElementById(id).classList.remove('hidden'));
+  } else if(session.role==='Admin'){
+    ['tileUsers','tileLocations','tileTrips','tileStart','tileReports'].forEach(id=>document.getElementById(id).classList.remove('hidden'));
+  } else if(session.role==='Operator'){
+    ['tileStart','tileReports'].forEach(id=>document.getElementById(id).classList.remove('hidden'));
+  }
+
+  // Home small text
+  document.getElementById('homeCompanyTitle').textContent = ''; // per request remove placeholder
+  document.getElementById('homeUserLabel').textContent = session.displayName || session.user;
+  document.getElementById('homeRole').textContent = session.role;
+
+  // Stats
+  document.getElementById('statLocations').textContent = LS.get(K.LOCS,[]).length;
+  document.getElementById('statTrips').textContent = LS.get(K.TRIPS,[]).length;
+  document.getElementById('statCompanies').textContent = LS.get(K.COMPANIES,[]).length;
+  document.getElementById('statRuns').textContent = LS.get(K.RUNS,[]).length;
+}
+
+/* =========================
+   MASTER ADMIN — Companies
+   ========================= */
+function renderCompanyList(){
+  const list = LS.get(K.COMPANIES,[]);
+  const ul = document.getElementById('companyList'); ul.innerHTML='';
+  if(list.length===0){ ul.innerHTML = '<div class="text-sm text-slate-400">No companies</div>'; return; }
+  list.forEach(c=>{
+    const li = document.createElement('li');
+    li.className='p-3 border rounded flex items-center justify-between';
+    li.innerHTML = `<div>
+                      <div class="font-semibold">${c.name}</div>
+                      <div class="text-xs text-slate-500">Enabled: ${c.enabled? 'Yes' : 'No'}</div>
+                    </div>
+                    <div class="flex gap-2">
+                      <button class="bg-slate-100 px-3 py-1 rounded" onclick="editCompany('${c.id}')">Edit</button>
+                      <button class="bg-yellow-500 text-white px-3 py-1 rounded" onclick="toggleCompany('${c.id}')">${c.enabled? 'Disable' : 'Enable'}</button>
+                      <button class="bg-red-500 text-white px-3 py-1 rounded" onclick="deleteCompany('${c.id}')">Delete</button>
+                    </div>`;
+    ul.appendChild(li);
+  });
+}
+function openCompanyForm(){ editingCompanyId=null; document.getElementById('companyNameInp').value=''; document.getElementById('companyLogoInp').value=''; document.getElementById('companyModal').classList.remove('hidden'); }
+function closeCompanyModal(){ document.getElementById('companyModal').classList.add('hidden'); editingCompanyId=null; }
+function saveCompany(){
+  const name = (document.getElementById('companyNameInp').value||'').trim();
+  const logo = (document.getElementById('companyLogoInp').value||'').trim();
+  if(!name) return alert('Company name required');
+  const comps = LS.get(K.COMPANIES,[]);
+  if(editingCompanyId){
+    const i = comps.findIndex(x=>x.id===editingCompanyId);
+    if(i>=0){ comps[i].name = name; comps[i].logo = logo; }
+  } else {
+    comps.push({ id: uid('comp'), name, logo, enabled:true, createdAt:new Date().toISOString() });
+  }
+  LS.set(K.COMPANIES, comps);
+  closeCompanyModal();
+  renderCompanyList();
+  updateHeader();
+  toast('Company saved');
+}
+function editCompany(id){ const comps = LS.get(K.COMPANIES,[]); const c = comps.find(x=>x.id===id); if(!c) return alert('Not found'); editingCompanyId = id; document.getElementById('companyNameInp').value = c.name; document.getElementById('companyLogoInp').value = c.logo||''; document.getElementById('companyModal').classList.remove('hidden'); }
+function toggleCompany(id){ const comps = LS.get(K.COMPANIES,[]); const i = comps.findIndex(x=>x.id===id); if(i===-1) return; comps[i].enabled = !comps[i].enabled; LS.set(K.COMPANIES, comps); renderCompanyList(); }
+function deleteCompany(id){ if(!confirm('Delete company and its data?')) return; // cascade remove
+  let comps = LS.get(K.COMPANIES,[]); comps = comps.filter(c=>c.id!==id); LS.set(K.COMPANIES, comps);
+  let users = LS.get(K.USERS,[]); users = users.filter(u=>u.companyId!==id); LS.set(K.USERS, users);
+  let locs = LS.get(K.LOCS,[]); locs = locs.filter(l=>l.companyId!==id); LS.set(K.LOCS, locs);
+  let trips = LS.get(K.TRIPS,[]); trips = trips.filter(t=>t.companyId!==id); LS.set(K.TRIPS, trips);
+  renderCompanyList(); renderUserList(); renderLocationList(); renderTripList();
+  toast('Company deleted');
+}
+
+/* =========================
+   Users (company-scoped)
+   ========================= */
+function openUserForm(){
+  editingUser = null;
+  const comps = LS.get(K.COMPANIES,[]);
+  const sel = document.getElementById('userCompanyInp'); sel.innerHTML='';
+  comps.forEach(c => { const o = document.createElement('option'); o.value=c.id; o.textContent=c.name; sel.appendChild(o); });
+  document.getElementById('userNameInp').value=''; document.getElementById('userPassInp').value=''; document.getElementById('userDisplayInp').value=''; document.getElementById('userRoleInp').value='Operator';
+  document.getElementById('userModal').classList.remove('hidden');
+}
+function closeUserModal(){ document.getElementById('userModal').classList.add('hidden'); editingUser=null; document.getElementById('userNameInp').disabled=false; }
+function saveUser(){
+  const username = (document.getElementById('userNameInp').value||'').trim();
+  const pass = (document.getElementById('userPassInp').value||'').trim();
+  const display = (document.getElementById('userDisplayInp').value||'').trim();
+  const role = document.getElementById('userRoleInp').value;
+  const companyId = document.getElementById('userCompanyInp').value || null;
+  if(!username || !pass) return alert('Username and password required');
+  const users = LS.get(K.USERS,[]);
+  if(editingUser){
+    const i = users.findIndex(u=>u.username===editingUser);
+    if(i>=0){ users[i].pass = pass; users[i].displayName = display; users[i].role = role; users[i].companyId = companyId; users[i].enabled = true; }
+  } else {
+    if(users.find(u=>u.username===username)) return alert('Username exists');
+    users.push({ username, pass, role, companyId, enabled:true, displayName: display });
+  }
+  LS.set(K.USERS, users);
+  closeUserModal();
+  renderUserList();
+  toast('User saved');
+}
+function renderUserList(){
+  const ul = document.getElementById('usersList'); ul.innerHTML='';
+  const users = LS.get(K.USERS,[]);
+  const s = LS.get(K.SESSION, null);
+  const visible = (!s || s.user==='bhagyesh') ? users : users.filter(u=>u.companyId===s.companyId);
+  if(visible.length===0){ ul.innerHTML = '<div class="text-sm text-slate-400">No users</div>'; return; }
+  visible.forEach(u => {
+    const li = document.createElement('li'); li.className='p-3 border rounded flex items-center justify-between';
+    li.innerHTML = `<div><div class="font-semibold">${u.displayName || u.username}</div><div class="text-xs text-slate-500">${u.username} · ${u.role} · ${u.enabled ? 'Enabled' : 'Disabled'}</div></div>
+                    <div class="flex gap-2">
+                      <button class="bg-slate-100 px-3 py-1 rounded" onclick="editUser('${u.username}')">Edit</button>
+                      <button class="bg-yellow-500 text-white px-3 py-1 rounded" onclick="toggleUser('${u.username}')">${u.enabled ? 'Disable' : 'Enable'}</button>
+                      <button class="bg-red-500 text-white px-3 py-1 rounded" onclick="deleteUser('${u.username}')">Delete</button>
+                    </div>`;
+    ul.appendChild(li);
+  });
+}
+function editUser(username){
+  const users = LS.get(K.USERS,[]); const u = users.find(x=>x.username===username);
+  if(!u) return alert('User not found');
+  editingUser = username;
+  document.getElementById('userNameInp').value = u.username; document.getElementById('userNameInp').disabled = true;
+  document.getElementById('userPassInp').value = u.pass; document.getElementById('userDisplayInp').value = u.displayName || '';
+  document.getElementById('userRoleInp').value = u.role;
+  const comps = LS.get(K.COMPANIES,[]); const sel = document.getElementById('userCompanyInp'); sel.innerHTML='';
+  comps.forEach(c=>{ const o=document.createElement('option'); o.value=c.id; o.textContent=c.name; if(c.id===u.companyId) o.selected=true; sel.appendChild(o); });
+  document.getElementById('userModal').classList.remove('hidden');
+}
+function toggleUser(username){ const users = LS.get(K.USERS,[]); const i = users.findIndex(u=>u.username===username); if(i===-1) return; users[i].enabled = !users[i].enabled; LS.set(K.USERS, users); renderUserList(); }
+function deleteUser(username){ if(!confirm('Delete user?')) return; const users = LS.get(K.USERS,[]).filter(u=>u.username!==username); LS.set(K.USERS, users); renderUserList(); toast('User deleted'); }
+
+/* =========================
+   Locations: map picker & persistence
+   ========================= */
+function initLocMap(){
+  if(locMap){ locMap.invalidateSize(); return; }
+  locMap = L.map('locMap');
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution:'© OpenStreetMap' }).addTo(locMap);
+  locMap.setView([21.6417,69.6293], 9);
+  locMap.on('click', (e)=> setPicker(e.latlng.lat, e.latlng.lng));
+  if(navigator.geolocation) navigator.geolocation.getCurrentPosition(p=> locMap.setView([p.coords.latitude, p.coords.longitude], 13), ()=>{});
+  renderLocationList();
+}
+function setPicker(lat,lng){
+  document.getElementById('locLat').value = lat.toFixed(6);
+  document.getElementById('locLng').value = lng.toFixed(6);
+  const r = Number(document.getElementById('locRadius').value || 500);
+  if(!locMarker){ locMarker = L.marker([lat,lng], { draggable:true }).addTo(locMap); locMarker.on('dragend', e=>{ const p=e.target.getLatLng(); document.getElementById('locLat').value = p.lat.toFixed(6); document.getElementById('locLng').value = p.lng.toFixed(6); drawLocCircle(p.lat,p.lng); }); }
+  else locMarker.setLatLng([lat,lng]);
+  drawLocCircle(lat,lng,r);
+}
+function drawLocCircle(lat,lng){
+  const radius = Number(document.getElementById('locRadius').value || 500);
+  if(locCircle) locMap.removeLayer(locCircle);
+  locCircle = L.circle([lat,lng], { radius, fillOpacity:0.06, color:'#2563eb' }).addTo(locMap);
+}
+function useCurrentLocation(){
+  if(!navigator.geolocation) return alert('Geolocation not available');
+  navigator.geolocation.getCurrentPosition(pos=>{
+    const lat = pos.coords.latitude, lng = pos.coords.longitude;
+    setPicker(lat,lng);
+    locMap.setView([lat,lng], 15);
+    toast('Picker updated from device GPS');
+  }, err => alert('Unable to fetch GPS: '+err.message), { enableHighAccuracy:true, maximumAge:2000 });
+}
+function testAnnouncement(){ const msg = (document.getElementById('locMsg').value||'').trim() || 'Test announcement'; speak(msg); }
+function saveLocation(){
+  const name = (document.getElementById('locName').value||'').trim();
+  const lat = parseFloat(document.getElementById('locLat').value);
+  const lng = parseFloat(document.getElementById('locLng').value);
+  const radius = Number(document.getElementById('locRadius').value || 500);
+  const msg = (document.getElementById('locMsg').value||'').trim();
+  if(!name || isNaN(lat) || isNaN(lng)) return alert('Please provide name and lat/lng');
+  if(radius <= 0) return alert('Radius must be > 0');
+  const s = LS.get(K.SESSION, null);
+  const companyId = (s && s.user!=='bhagyesh') ? s.companyId : (LS.get(K.COMPANIES,[])[0]?.id || null);
+  const locs = LS.get(K.LOCS,[]);
+  const id = editingLocId || uid('loc');
+  const entry = { id, name, lat, lng, radius, msg, imgData:null, companyId, createdAt:new Date().toISOString() };
+  const idx = locs.findIndex(x=>x.id===id);
+  if(idx>=0) locs[idx]=entry; else locs.push(entry);
+  LS.set(K.LOCS, locs);
+  editingLocId = null;
+  document.getElementById('locName').value = ''; document.getElementById('locMsg').value=''; document.getElementById('locLat').value=''; document.getElementById('locLng').value='';
+  if(locMarker){ try{ locMap.removeLayer(locMarker); }catch(e){} locMarker=null; }
+  if(locCircle){ try{ locMap.removeLayer(locCircle); }catch(e){} locCircle=null; }
+  renderLocationList(); renderAvail();
+  toast('Location saved');
+}
+function renderLocationList(){
+  const ul = document.getElementById('locationList'); ul.innerHTML='';
+  const locs = LS.get(K.LOCS,[]);
+  const s = LS.get(K.SESSION, null);
+  const visible = (!s || s.user==='bhagyesh') ? locs : locs.filter(l=>l.companyId===s.companyId);
+  if(visible.length===0){ ul.innerHTML = '<div class="text-sm text-slate-400">No locations</div>'; return; }
+  visible.forEach(l=>{
+    const li = document.createElement('li'); li.className='p-3 border rounded flex items-start justify-between';
+    li.innerHTML = `<div class="flex-1"><div class="font-semibold">${l.name}</div><div class="text-xs text-slate-500">Lat: ${l.lat.toFixed(6)}, Lng: ${l.lng.toFixed(6)} · Radius: ${l.radius}m</div>${l.msg? `<div class="text-xs text-slate-500">Msg: ${l.msg}</div>` : ''}</div>
+                    <div class="flex flex-col gap-2">
+                      <button class="bg-slate-100 px-3 py-1 rounded" onclick="editLocation('${l.id}')">Edit</button>
+                      <button class="bg-red-500 text-white px-3 py-1 rounded" onclick="deleteLocation('${l.id}')">Delete</button>
+                    </div>`;
+    ul.appendChild(li);
+  });
+}
+function editLocation(id){
+  const locs = LS.get(K.LOCS,[]); const l = locs.find(x=>x.id===id); if(!l) return alert('Not found');
+  editingLocId = id;
+  document.getElementById('locName').value = l.name; document.getElementById('locLat').value = l.lat; document.getElementById('locLng').value = l.lng;
+  document.getElementById('locRadius').value = l.radius; document.getElementById('locMsg').value = l.msg || '';
+  setPicker(l.lat, l.lng);
+}
+function deleteLocation(id){ if(!confirm('Delete location?')) return; let locs = LS.get(K.LOCS,[]); locs = locs.filter(x=>x.id!==id); LS.set(K.LOCS, locs); renderLocationList(); renderAvail(); toast('Location deleted'); }
+
+/* =========================
+   Trips — dual list UI
+   ========================= */
+function renderAvail(){
+  const wrap = document.getElementById('availList'); wrap.innerHTML='';
+  const locs = LS.get(K.LOCS,[]);
+  const s = LS.get(K.SESSION, null);
+  const visible = (!s || s.user==='bhagyesh') ? locs : locs.filter(l=>l.companyId===s.companyId);
+  if(visible.length===0){ wrap.innerHTML = '<div class="text-sm text-slate-400">No locations available</div>'; return; }
+  visible.forEach((l, idx) => {
+    const d = document.createElement('div'); d.className='p-2 rounded hover:bg-slate-50 flex items-center justify-between';
+    d.innerHTML = `<div><div class="font-medium">${l.name}</div><div class="text-xs text-slate-500">${l.lat.toFixed(4)}, ${l.lng.toFixed(4)}</div></div>`;
+    d.onclick = ()=>{ selectedAvail = (selectedAvail===idx ? null : idx); highlightAvail(); };
+    wrap.appendChild(d);
+  });
+}
+function highlightAvail(){ const wrap = document.getElementById('availList'); [...wrap.children].forEach((c,i)=>{ c.classList.toggle('bg-blue-50', selectedAvail===i); c.classList.toggle('ring', selectedAvail===i); }); }
+function renderPlanned(){
+  const wrap = document.getElementById('plannedList'); wrap.innerHTML='';
+  if(planned.length===0){ wrap.innerHTML = '<div class="text-sm text-slate-400">No planned stops</div>'; return; }
+  planned.forEach((p, idx)=> {
+    const d = document.createElement('div'); d.className='p-2 rounded hover:bg-slate-50 flex items-center justify-between';
+    d.innerHTML = `<div><div class="font-medium">${idx+1}. ${p.name}</div><div class="text-xs text-slate-500">${p.lat.toFixed(4)}, ${p.lng.toFixed(4)}</div></div>`;
+    d.onclick = ()=>{ selectedPlanned = (selectedPlanned===idx ? null : idx); highlightPlanned(); };
+    wrap.appendChild(d);
+  });
+}
+function highlightPlanned(){ const wrap = document.getElementById('plannedList'); [...wrap.children].forEach((c,i)=>{ c.classList.toggle('bg-blue-50', selectedPlanned===i); c.classList.toggle('ring', selectedPlanned===i); }); }
+function addPlanned(){
+  const locs = LS.get(K.LOCS,[]); const s = LS.get(K.SESSION,null);
+  const visible = (!s || s.user==='bhagyesh') ? locs : locs.filter(l=>l.companyId===s.companyId);
+  if(selectedAvail===null) return alert('Select a location from Available Locations');
+  planned.push(JSON.parse(JSON.stringify(visible[selectedAvail])));
+  renderPlanned();
+}
+function removePlanned(){ if(selectedPlanned===null) return alert('Select planned stop'); planned.splice(selectedPlanned,1); selectedPlanned=null; renderPlanned(); }
+function movePlanned(dir){ if(selectedPlanned===null) return alert('Select planned stop'); const i=selectedPlanned, j=i+dir; if(j<0 || j>=planned.length) return; [planned[i], planned[j]] = [planned[j], planned[i]]; selectedPlanned=j; renderPlanned(); }
+function clearPlanned(){ if(!confirm('Clear planned stops?')) return; planned=[]; selectedPlanned=null; renderPlanned(); }
+function saveTrip(){
+  const name = (document.getElementById('tripName').value||'').trim();
+  if(!name) return alert('Trip name is required');
+  if(planned.length < 2) return alert('Add at least 2 stops to save trip');
+  const s = LS.get(K.SESSION, null);
+  const companyId = (!s || s.user==='bhagyesh') ? null : s.companyId;
+  const trips = LS.get(K.TRIPS, []);
+  trips.push({ id: uid('trip'), name, locs: planned.map(x=>({...x})), companyId, createdAt: new Date().toISOString() });
+  LS.set(K.TRIPS, trips);
+  planned=[]; document.getElementById('tripName').value='';
+  renderPlanned(); renderTripList(); toast('Trip saved');
+}
+function renderTripList(){
+  const ul = document.getElementById('tripList'); ul.innerHTML='';
+  const trips = LS.get(K.TRIPS,[]);
+  const s = LS.get(K.SESSION, null);
+  const visible = (!s || s.user==='bhagyesh') ? trips : trips.filter(t=>t.companyId===s.companyId);
+  if(visible.length===0){ ul.innerHTML = '<div class="text-sm text-slate-400">No trips</div>'; return; }
+  visible.forEach(t=>{
+    const li = document.createElement('li'); li.className='p-3 border rounded flex items-center justify-between';
+    li.innerHTML = `<div><div class="font-semibold">${t.name}</div><div class="text-xs text-slate-500">${t.locs.map(x=>x.name).join(' → ')}</div></div>
+                    <div class="flex gap-2">
+                      <button class="bg-blue-600 text-white px-3 py-1 rounded" onclick="startTripById('${t.id}')">Start</button>
+                      <button class="bg-slate-100 px-3 py-1 rounded" onclick="editTripById('${t.id}')">Edit</button>
+                      <button class="bg-red-500 text-white px-3 py-1 rounded" onclick="deleteTripById('${t.id}')">Delete</button>
+                    </div>`;
+    ul.appendChild(li);
+  });
+}
+function startTripById(id){ const trips = LS.get(K.TRIPS,[]); const t = trips.find(x=>x.id===id); if(!t) return alert('Trip not found'); go('pageStartTrip'); document.getElementById('startTripSelect').value = id; startSelectedTrip(); }
+function editTripById(id){ const trips = LS.get(K.TRIPS,[]); const idx = trips.findIndex(t=>t.id===id); if(idx===-1) return alert('Trip not found'); const t = trips[idx]; document.getElementById('tripName').value = t.name; planned = t.locs.map(x=>({...x})); trips.splice(idx,1); LS.set(K.TRIPS, trips); renderTripList(); renderPlanned(); go('pageTripSetup'); }
+function deleteTripById(id){ if(!confirm('Delete trip?')) return; let trips = LS.get(K.TRIPS,[]); trips = trips.filter(t=>t.id!==id); LS.set(K.TRIPS, trips); renderTripList(); toast('Trip deleted'); }
+
+/* =========================
+   Start Trip & Ongoing — GPS, announcements, 3x logic
+   ========================= */
+function renderStartSelect(){
+  const sel = document.getElementById('startTripSelect'); sel.innerHTML='';
+  const trips = LS.get(K.TRIPS,[]);
+  const s = LS.get(K.SESSION, null);
+  const visible = (!s || s.user==='bhagyesh') ? trips : trips.filter(t=>t.companyId===s.companyId);
+  visible.forEach(t=>{ const o=document.createElement('option'); o.value=t.id; o.textContent=t.name; sel.appendChild(o); });
+}
+
+function startSelectedTrip(){
+  const sel = document.getElementById('startTripSelect'); const tripId = sel.value;
+  if(!tripId) return alert('Select a trip');
+  const trips = LS.get(K.TRIPS,[]); const t = trips.find(x=>x.id===tripId);
+  if(!t) return alert('Trip not found');
+
+  // hide start panel, show ongoing panel
+  document.getElementById('startPanel').classList.add('hidden');
+  document.getElementById('ongoingPanel').classList.remove('hidden');
+
+  // active run: clone locations, attach counters for announcements
+  activeRun = { tripId: t.id, name: t.name, locs: t.locs.map(l=>({...l, _enterCount:0, _arrived:false})), startedAt: new Date().toISOString(), idx:0, reached:[] };
+
+  document.getElementById('ongoingTripName').textContent = activeRun.name;
+  document.getElementById('ongoingStart').textContent = fmtISO(activeRun.startedAt);
+  updateProgressUI();
+
+  // initialize run map + draw route
+  initRunMap();
+  drawRoute(activeRun.locs);
+
+  // start watchPosition and periodic refresh
+  if(watchId !== null){ try{ navigator.geolocation.clearWatch(watchId); }catch(e){} watchId=null; }
+  if(navigator.geolocation && typeof navigator.geolocation.watchPosition === 'function'){
+    watchId = navigator.geolocation.watchPosition(gpsSuccess, gpsError, { enableHighAccuracy:true, maximumAge:2000, timeout:20000 });
+  }
+  // immediate fetch + periodic based on selector
+  startPeriodicRefreshImmediate();
+}
+
+/* run map functions */
+function initRunMap(){ if(runMap){ try{ runMap.invalidateSize(); }catch(e){} return; } runMap = L.map('runMap'); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution:'© OpenStreetMap' }).addTo(runMap); runMap.setView([21.6417,69.6293], 12); }
+function createBusIcon(){ const svg = encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' width='36' height='36'><rect x='6' y='12' width='52' height='36' rx='6' fill='#0ea5e9' stroke='#0369a1' stroke-width='2'/><circle cx='20' cy='52' r='4' fill='#0b1220'/><circle cx='44' cy='52' r='4' fill='#0b1220'/><rect x='16' y='20' width='8' height='12' fill='#fff'/><rect x='40' y='20' width='8' height='12' fill='#fff'/></svg>`); return L.divIcon({ html:`<img src="data:image/svg+xml;charset=utf-8,${svg}" style="width:36px;height:36px;"/>`, className:'', iconSize:[36,36], iconAnchor:[18,18] }); }
+function drawRoute(locs){
+  if(runPolyline) try{ runMap.removeLayer(runPolyline); }catch(e){} runPolyline=null;
+  runMarkers.forEach(m=>{ try{ runMap.removeLayer(m);}catch(e){} }); runMarkers=[];
+  runCircles.forEach(c=>{ try{ runMap.removeLayer(c);}catch(e){} }); runCircles=[];
+  const latlngs = locs.map(l=>[l.lat,l.lng]);
+  runPolyline = L.polyline(latlngs, { color:'#2563eb', weight:4 }).addTo(runMap);
+  locs.forEach((l,idx)=>{
+    const m = L.marker([l.lat,l.lng]).addTo(runMap).bindPopup(`${idx+1}. ${l.name}`);
+    runMarkers.push(m);
+    const c = L.circle([l.lat,l.lng], { radius: Number(l.radius||500), color:'#2563eb', fillOpacity:0.06 }).addTo(runMap);
+    runCircles.push(c);
+  });
+  try{ runMap.fitBounds(runPolyline.getBounds(), { padding:[20,20] }); }catch(e){}
+}
+
+/* GPS success / error */
+function gpsSuccess(pos){
+  lastPosition = pos;
+  const lat = pos.coords.latitude, lng = pos.coords.longitude, sp = pos.coords.speed;
+  if(!meMarker) meMarker = L.marker([lat,lng], { icon: createBusIcon(), title:'Vehicle' }).addTo(runMap);
+  else meMarker.setLatLng([lat,lng]);
+  try{ runMap.panTo([lat,lng], { animate:true, duration:0.6 }); }catch(e){}
+  document.getElementById('curLat').textContent = lat.toFixed(6);
+  document.getElementById('curLng').textContent = lng.toFixed(6);
+  document.getElementById('curSpeed').textContent = sp ? (sp*3.6).toFixed(1) + ' km/h' : '—';
+  if(activeRun) updateUpcomingAndCheck(lat,lng,sp);
+}
+function gpsError(err){ console.warn('GPS error', err); }
+
+/* update upcoming & announcement logic (use custom message next.msg), 3x */
+function updateUpcomingAndCheck(lat,lng,speedMs){
+  if(!activeRun) return;
+  if(activeRun.idx >= activeRun.locs.length) return;
+  const next = activeRun.locs[activeRun.idx];
+  const d = haversine(lat,lng,next.lat,next.lng);
+  document.getElementById('upcomingName').textContent = next.name;
+  document.getElementById('distNext').textContent = d >= 1000 ? (d/1000).toFixed(2)+' km' : Math.round(d)+' m';
+  const sp = speedMs || 8.33;
+  const secs = sp > 0 ? (d/sp) : (d/8.33);
+  const eta = new Date(Date.now() + secs*1000);
+  document.getElementById('etaNext').textContent = eta.toLocaleTimeString();
+
+  if(activeRun.nextLine){ try{ runMap.removeLayer(activeRun.nextLine); }catch(e){} activeRun.nextLine=null; }
+  activeRun.nextLine = L.polyline([[lat,lng],[next.lat,next.lng]], { color:'blue', dashArray:'6' }).addTo(runMap);
+
+  const radius = Number(next.radius || 500);
+  if(!next._enterCount) next._enterCount = 0;
+  if(d <= radius){
+    // announce up to 3 times; we increment and use TTS announcements
+    if(next._enterCount < 3){
+      next._enterCount++;
+      const messageToSpeak = next.msg || `Next stop: ${next.name}`;
+      speak(messageToSpeak);
+      // spaced repeats (guarded by _enterCount)
+      if(next._enterCount < 3) setTimeout(()=>{ if(next._enterCount < 3) speak(messageToSpeak); }, 800);
+      if(next._enterCount < 3) setTimeout(()=>{ if(next._enterCount < 3) speak(messageToSpeak); }, 1600);
+    }
+    // once _enterCount reached 3, mark arrived and move on
+    if(next._enterCount >= 3 && !next._arrived){
+      next._arrived = true;
+      activeRun.reached.push({ name: next.name, time: new Date().toISOString() });
+      markCompleted(activeRun.idx);
+      activeRun.idx++;
+      updateProgressUI();
+      if(activeRun.idx < activeRun.locs.length) document.getElementById('upcomingName').textContent = activeRun.locs[activeRun.idx].name;
+      else { document.getElementById('upcomingName').textContent = 'Completed'; setTimeout(()=>{ finishAndSaveRun(); }, 1200); }
+    }
+  }
+}
+
+/* fallback speed estimator (not required) */
+function estimateSpeed(){ return null; }
+
+/* mark a stop visually completed */
+function markCompleted(idx){
+  try{
+    if(runMarkers[idx]) runMarkers[idx].setIcon(L.icon({ iconUrl:'https://cdn-icons-png.flaticon.com/512/190/190411.png', iconSize:[28,28] }));
+    if(runCircles[idx]) runCircles[idx].setStyle({ color:'#16a34a' });
+  }catch(e){}
+}
+
+/* update progress UI */
+function updateProgressUI(){
+  if(!activeRun){ document.getElementById('progressStops').textContent='—'; document.getElementById('progressBar').style.width='0%'; return; }
+  const reached = activeRun.reached.length; const total = activeRun.locs.length;
+  const pct = total===0 ? 0 : Math.round((reached/total)*100);
+  document.getElementById('progressStops').textContent = `${reached} / ${total} (${pct}%)`;
+  document.getElementById('progressBar').style.width = pct + '%';
+}
+
+/* finish and save run automatically when all stops complete */
+function finishAndSaveRun(){
+  if(!activeRun) return;
+  const endedAt = new Date().toISOString();
+  const durationMin = Math.round((new Date(endedAt) - new Date(activeRun.startedAt)) / 60000);
+  const run = { tripName: activeRun.name, startedAt: activeRun.startedAt, endedAt, durationMin, reached: activeRun.reached };
+  const runs = LS.get(K.RUNS,[]); runs.push(run); LS.set(K.RUNS, runs);
+  toast('Destination reached — run saved');
+  setTimeout(()=>{ endTrip(); }, 1400);
+}
+
+/* end trip manual */
+function endTrip(){
+  if(!activeRun) return;
+  const endedAt = new Date().toISOString();
+  const durationMin = Math.round((new Date(endedAt) - new Date(activeRun.startedAt)) / 60000);
+  const run = { tripName: activeRun.name, startedAt: activeRun.startedAt, endedAt, durationMin, reached: activeRun.reached };
+  const runs = LS.get(K.RUNS,[]); runs.push(run); LS.set(K.RUNS, runs);
+
+  if(watchId !== null){ try{ navigator.geolocation.clearWatch(watchId); }catch(e){} watchId=null; }
+  if(autoRefreshIntervalId){ clearInterval(autoRefreshIntervalId); autoRefreshIntervalId=null; }
+  activeRun = null;
+  if(meMarker){ try{ runMap.removeLayer(meMarker); }catch(e){} meMarker=null; }
+  document.getElementById('ongoingPanel').classList.add('hidden');
+  document.getElementById('startPanel').classList.remove('hidden');
+  toast('Trip ended and saved to reports');
+  renderReports(); renderTripList(); renderStartSelect();
+}
+
+/* center map on current marker */
+function centerMap(){ if(meMarker && runMap) runMap.panTo(meMarker.getLatLng(), { animate:true }); }
+
+/* center current GPS immediately (Current Location button) */
+function centerCurrentGPS(){
+  if(!navigator.geolocation) return alert('Geolocation not available');
+  navigator.geolocation.getCurrentPosition(pos=>{
+    lastPosition = pos;
+    const lat = pos.coords.latitude, lng = pos.coords.longitude, sp = pos.coords.speed;
+    if(!meMarker && runMap) meMarker = L.marker([lat,lng], { icon: createBusIcon(), title:'Vehicle' }).addTo(runMap);
+    if(meMarker) meMarker.setLatLng([lat,lng]);
+    if(runMap) runMap.panTo([lat,lng], { animate:true });
+    document.getElementById('curLat').textContent = lat.toFixed(6);
+    document.getElementById('curLng').textContent = lng.toFixed(6);
+    document.getElementById('curSpeed').textContent = sp ? (sp*3.6).toFixed(1) + ' km/h' : '—';
+    if(activeRun) updateUpcomingAndCheck(lat,lng,sp);
+    toast('Updated current location');
+  }, err => alert('Unable to get current position: '+err.message), { enableHighAccuracy:true, maximumAge:2000 });
+}
+
+/* manual announcement for upcoming stop (speaks custom message) */
+function manualAnn(){
+  if(!activeRun) return toast('No active trip');
+  const idx = activeRun.idx < activeRun.locs.length ? activeRun.idx : (activeRun.locs.length-1);
+  const next = activeRun.locs[idx];
+  const message = next.msg || `Next stop: ${next.name}`;
+  speak(message);
+}
+
+/* TTS helpers */
+function setVolume(v){ ttsVolume = Number(v); toast('Volume: '+ttsVolume); }
+function speak(text){ try{ const u = new SpeechSynthesisUtterance(text); u.volume = Number(ttsVolume || 1.0); speechSynthesis.speak(u); }catch(e){} }
+
+/* Periodic refresh logic: calls getCurrentPosition every N seconds (based on selector)
+   Also uses watchPosition for near real-time. */
+function startPeriodicRefreshImmediate(){
+  if(autoRefreshIntervalId) clearInterval(autoRefreshIntervalId);
+  // immediate getCurrentPosition
+  if(navigator.geolocation){
+    navigator.geolocation.getCurrentPosition(pos=>{
+      lastPosition = pos;
+      const lat = pos.coords.latitude, lng = pos.coords.longitude, sp = pos.coords.speed;
+      if(!meMarker && runMap) meMarker = L.marker([lat,lng], { icon: createBusIcon(), title:'Vehicle' }).addTo(runMap);
+      if(meMarker) meMarker.setLatLng([lat,lng]);
+      document.getElementById('curLat').textContent = lat.toFixed(6);
+      document.getElementById('curLng').textContent = lng.toFixed(6);
+      document.getElementById('curSpeed').textContent = sp ? (sp*3.6).toFixed(1)+' km/h' : '—';
+      if(activeRun) updateUpcomingAndCheck(lat,lng,sp);
+    }, err=>{ /* ignore initial error */ }, { enableHighAccuracy:true, maximumAge:2000 });
+  }
+  // set periodic interval
+  setAutoRefreshInterval();
+}
+function setAutoRefreshInterval(){
+  if(autoRefreshIntervalId) clearInterval(autoRefreshIntervalId);
+  const secs = Number(document.getElementById('autoRefreshSelect').value || 10);
+  if(!navigator.geolocation) { toast('Geolocation not available'); return; }
+  autoRefreshIntervalId = setInterval(()=> {
+    navigator.geolocation.getCurrentPosition(pos=>{
+      lastPosition = pos;
+      const lat = pos.coords.latitude, lng = pos.coords.longitude, sp = pos.coords.speed;
+      if(!meMarker && runMap) meMarker = L.marker([lat,lng], { icon: createBusIcon(), title:'Vehicle' }).addTo(runMap);
+      if(meMarker) meMarker.setLatLng([lat,lng]);
+      document.getElementById('curLat').textContent = lat.toFixed(6);
+      document.getElementById('curLng').textContent = lng.toFixed(6);
+      document.getElementById('curSpeed').textContent = sp ? (sp*3.6).toFixed(1)+' km/h' : '—';
+      if(activeRun) updateUpcomingAndCheck(lat,lng,sp);
+    }, err=>{ console.warn('Periodic position error', err); }, { enableHighAccuracy:true, maximumAge:2000 });
+  }, secs * 1000);
+  toast('Auto refresh set to '+secs+'s');
+}
+
+/* =========================
+   Reports & Exports
+   ========================= */
+function renderReports(){
+  const ul = document.getElementById('reportTrips'); ul.innerHTML='';
+  const runs = LS.get(K.RUNS,[]);
+  if(runs.length===0) ul.innerHTML = '<div class="text-sm text-slate-400">No runs yet</div>';
+  runs.slice().reverse().forEach(r => {
+    const li = document.createElement('li'); li.className='p-3 border rounded';
+    li.innerHTML = `<div class="font-semibold">${r.tripName}</div><div class="text-xs text-slate-500">Start: ${fmtISO(r.startedAt)} | End: ${fmtISO(r.endedAt)} | ${r.durationMin} min</div><div class="text-xs text-slate-500">Stops: ${r.reached.map(s=>s.name+' ('+fmtISO(s.time)+')').join(', ')}</div>`;
+    ul.appendChild(li);
+  });
+  const logs = LS.get(K.LOGINS,[]); const ul2 = document.getElementById('reportLogins'); ul2.innerHTML='';
+  if(logs.length===0) ul2.innerHTML = '<div class="text-sm text-slate-400">No login activity</div>';
+  logs.slice().reverse().forEach(l => {
+    const li = document.createElement('li'); li.className='p-2 border rounded';
+    li.innerHTML = `<div class="font-medium">${l.user}</div><div class="text-xs text-slate-500">${l.role} · ${fmtISO(l.time)} · ${l.device}</div>`;
+    ul2.appendChild(li);
+  });
+}
+function exportTripsExcel(){ const runs = LS.get(K.RUNS, []); const rows = []; runs.forEach(r=>{ rows.push({Trip:r.tripName, StartedAt:r.startedAt, EndedAt:r.endedAt, DurationMin:r.durationMin}); r.reached.forEach(s=>rows.push({Trip:r.tripName, StopReached:s.name, ReachedAt:s.time})); }); const ws = XLSX.utils.json_to_sheet(rows); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'TripReports'); XLSX.writeFile(wb, 'trip_reports.xlsx'); }
+function exportLoginsExcel(){ const logs = LS.get(K.LOGINS,[]); const ws = XLSX.utils.json_to_sheet(logs); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'LoginLogs'); XLSX.writeFile(wb, 'login_logs.xlsx'); }
+
+/* =========================
+   Boot: render lists and go to proper page
+   ========================= */
+function renderAvail(){ renderAvail; } // avoid unused warning
+(function boot(){
+  updateHeader();
+  renderLocationList();
+  renderTripList();
+  renderUserList();
+  renderStartSelect();
+  renderReports();
+  renderCompanyList();
+  // show home if session else login
+  if(LS.get(K.SESSION, null)) go('pageHome'); else go('pageLogin');
+})();
+
+/* small helper functions used in many handlers */
+function showHelp(){ alert('BusMate prototype — Master: bhagyesh/bhagyesh; Admin: admin/admin; Operator: operator/operator. Serve via static server for geolocation.'); }
+function startTrip(){ go('pageStartTrip'); }
+
+/* expose some functions to console for debugging (optional) */
+window._bm = { LS, K };
+
+</script>
+
+</body>
+</html>
