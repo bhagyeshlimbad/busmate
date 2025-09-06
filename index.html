@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>BusMate — Full Prototype (Fixed Ongoing Trip)</title>
+  <title>BusMate — Full Prototype (Audio Announce + Path Correction)</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
 
   <!-- Tailwind CSS -->
@@ -24,6 +24,8 @@
     .small-muted{ color:#64748b; font-size:.9rem; }
     .hidden{ display:none!important; }
     .page-back{ margin-bottom:.75rem; }
+    /* small tweaks for long page readability */
+    .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, 'Roboto Mono', monospace; }
   </style>
 </head>
 <body class="bg-slate-50 text-slate-900">
@@ -204,6 +206,8 @@
         <input id="locRadius" type="number" value="500" class="w-full border rounded px-3 py-2" />
         <label class="block mt-2 text-sm">Announcement message</label>
         <input id="locMsg" class="w-full border rounded px-3 py-2" placeholder="Custom announcement text (played during trip)" />
+        <label class="block mt-2 text-sm">Announcement Audio (optional)</label>
+        <input id="locAudio" type="file" accept="audio/*" class="w-full border rounded px-3 py-2" />
         <div class="flex gap-2 mt-3">
           <button class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded" onclick="useCurrentGPS()">Use Current GPS</button>
           <button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded" onclick="saveLocation()">Save</button>
@@ -402,7 +406,7 @@ if(!LS.get(K.LOGINS)) LS.set(K.LOGINS, []);
 function uid(pref='id'){ return pref + '_' + Math.random().toString(36).slice(2,9); }
 function toast(msg, ms=1800){ const el=document.getElementById('toast'); el.textContent=msg; el.classList.remove('hidden'); setTimeout(()=>el.classList.add('hidden'), ms); }
 function fmtISO(iso){ try{ return new Date(iso).toLocaleString(); }catch(e){ return iso; } }
-function haversine(lat1,lon1,lat2,lon2){ const toRad=v=>v*Math.PI/180; const R=6371000; const dLat=toRad(lat2-lat1); const dLon=toRad(lon2-lon1); const a=Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2; const c=2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a)); return R*c; }
+function haversine(lat1,lon1,lat2,lon2){ const toRad=v=>v*Math.PI/180; const R=6371000; const dLat=toRad(lat2-lat1); const dLon=toRad(lon2-lon1); const a=Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lon2))*Math.sin(dLon/2)**2; const c=2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a)); return R*c; }
 
 /* =========================
    Seed minimal data if empty
@@ -417,9 +421,9 @@ function haversine(lat1,lon1,lat2,lon2){ const toRad=v=>v*Math.PI/180; const R=6
       { username:'operator', pass:'operator', role:'Operator', companyId:comp.id, enabled:true, displayName:'Operator 1' }
     ]);
     const locs = [
-      { id: uid('loc'), name:'Station A', lat:21.6417, lng:69.6293, radius:500, msg:'Station A — please prepare to disembark', imgData:null, companyId:comp.id },
-      { id: uid('loc'), name:'Station B', lat:21.6517, lng:69.6390, radius:400, msg:'Station B — doors will open on the left', imgData:null, companyId:comp.id },
-      { id: uid('loc'), name:'Station C', lat:21.6617, lng:69.6490, radius:300, msg:'Station C — final stop', imgData:null, companyId:comp.id }
+      { id: uid('loc'), name:'Station A', lat:21.6417, lng:69.6293, radius:500, msg:'Station A — please prepare to disembark', audio:null, companyId:comp.id },
+      { id: uid('loc'), name:'Station B', lat:21.6517, lng:69.6390, radius:400, msg:'Station B — doors will open on the left', audio:null, companyId:comp.id },
+      { id: uid('loc'), name:'Station C', lat:21.6617, lng:69.6490, radius:300, msg:'Station C — final stop', audio:null, companyId:comp.id }
     ];
     LS.set(K.LOCS, locs);
     LS.set(K.TRIPS, [{ id: uid('trip'), name:'Demo Route', locs: locs.map(l=>({...l})), companyId: comp.id }]);
@@ -615,13 +619,28 @@ function useCurrentGPS(){
 function testAnnouncement(){ const msg=(document.getElementById('locMsg').value||'Test announcement').trim(); speak(msg); }
 function saveLocation(){
   const name=(document.getElementById('locName').value||'').trim(); const lat=parseFloat(document.getElementById('locLat').value); const lng=parseFloat(document.getElementById('locLng').value); const radius=parseInt(document.getElementById('locRadius').value||500,10); const msg=(document.getElementById('locMsg').value||'').trim();
+  const audioFile=document.getElementById('locAudio').files[0]||null;
   if(!name || isNaN(lat) || isNaN(lng)) return alert('Provide name, lat and lng');
   if(radius<=0) return alert('Radius > 0 required');
   const s = LS.get(K.SESSION, null); const companyId = (s && s.user!=='bhagyesh') ? s.companyId : LS.get(K.COMPANIES,[])[0]?.id || null;
-  const locs = LS.get(K.LOCS,[]); locs.push({ id: uid('loc'), name, lat, lng, radius, msg, imgData:null, companyId, createdAt:new Date().toISOString() }); LS.set(K.LOCS, locs);
-  document.getElementById('locName').value=''; document.getElementById('locLat').value=''; document.getElementById('locLng').value=''; document.getElementById('locMsg').value='';
-  if(locMarker){ try{ locMap.removeLayer(locMarker); }catch(e){} locMarker=null; } if(locCircle){ try{ locMap.removeLayer(locCircle);}catch(e){} locCircle=null; }
-  renderLocationList(); renderAvailList(); toast('Location saved');
+
+  if(audioFile){
+    const reader=new FileReader();
+    reader.onload=function(e){
+      pushLoc(e.target.result);
+    };
+    reader.readAsDataURL(audioFile);
+  } else {
+    pushLoc(null);
+  }
+
+  function pushLoc(audioData){
+    const locs = LS.get(K.LOCS,[]);
+    locs.push({ id: uid('loc'), name, lat, lng, radius, msg, audio:audioData, companyId, createdAt:new Date().toISOString() }); LS.set(K.LOCS, locs);
+    document.getElementById('locName').value=''; document.getElementById('locLat').value=''; document.getElementById('locLng').value=''; document.getElementById('locMsg').value=''; document.getElementById('locAudio').value='';
+    if(locMarker){ try{ locMap.removeLayer(locMarker); }catch(e){} locMarker=null; } if(locCircle){ try{ locMap.removeLayer(locCircle);}catch(e){} locCircle=null; }
+    renderLocationList(); renderAvailList(); toast('Location saved');
+  }
 }
 function renderLocationList(){
   const wrap=document.getElementById('locationList'); wrap.innerHTML='';
@@ -629,7 +648,7 @@ function renderLocationList(){
   if(visible.length===0){ wrap.innerHTML='<div class="text-sm text-slate-400">No locations yet.</div>'; return; }
   visible.forEach(l=>{
     const row=document.createElement('div'); row.className='list-row flex items-start justify-between';
-    row.innerHTML = `<div class="flex-1"><div class="font-semibold">${l.name}</div><div class="text-xs text-slate-500">Lat: ${l.lat.toFixed(6)} · Lng: ${l.lng.toFixed(6)} · R: ${l.radius}m</div>${l.msg?`<div class="text-xs text-slate-600 mt-1">Msg: ${l.msg}</div>`:''}</div>
+    row.innerHTML = `<div class="flex-1"><div class="font-semibold">${l.name}</div><div class="text-xs text-slate-500">Lat: ${l.lat.toFixed(6)} · Lng: ${l.lng.toFixed(6)} · R: ${l.radius}m</div>${l.msg?`<div class="text-xs text-slate-600 mt-1">Msg: ${l.msg}</div>`:''}${l.audio?`<div class="text-xs text-slate-600 mt-1">Audio: attached</div>`:''}</div>
       <div class="flex flex-col gap-2 ml-3">
         <button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="editLocation('${l.id}')">Edit</button>
         <button class="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700" onclick="deleteLocation('${l.id}')">Delete</button>
@@ -656,7 +675,7 @@ function renderAvailList(){
     wrap.appendChild(el);
   });
 }
-function planAdd(locId){ const loc = LS.get(K.LOCS,[]).find(x=>x.id===locId); if(!loc) return; planned.push({ id: loc.id, name: loc.name, lat: loc.lat, lng: loc.lng, radius: loc.radius, msg: loc.msg||'' }); renderPlanned(); }
+function planAdd(locId){ const loc = LS.get(K.LOCS,[]).find(x=>x.id===locId); if(!loc) return; planned.push({ id: loc.id, name: loc.name, lat: loc.lat, lng: loc.lng, radius: loc.radius, msg: loc.msg||'', audio: loc.audio||null }); renderPlanned(); }
 function renderPlanned(){ const wrap=document.getElementById('plannedList'); wrap.innerHTML=''; if(planned.length===0){ wrap.innerHTML='<div class="text-sm text-slate-400">No planned stops</div>'; return; } planned.forEach((p,i)=>{ const el=document.createElement('div'); el.className='p-2 rounded hover:bg-slate-50 flex items-center justify-between'; el.innerHTML=`<div><div class="font-medium">${i+1}. ${p.name}</div><div class="text-xs text-slate-500">R ${p.radius}m</div></div><div class="flex gap-2"><button class="bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded" onclick="plannedSelect(${i})">Select</button></div>`; if(i===plannedSelIdx) el.classList.add('ring','ring-blue-300'); wrap.appendChild(el); }); }
 function plannedSelect(i){ plannedSelIdx = (plannedSelIdx===i? null : i); renderPlanned(); }
 function addPlanned(){ toast('Use Add on Available Locations'); }
@@ -676,8 +695,6 @@ function renderStartSelect(){
   const s=LS.get(K.SESSION,null);
   const trips=LS.get(K.TRIPS,[]); const visible = (!s||s.user==='bhagyesh') ? trips : trips.filter(t=>t.companyId===s.companyId);
   visible.forEach(t=>{ const o=document.createElement('option'); o.value=t.id; o.textContent=t.name; sel.appendChild(o); });
-  const wrap = document.getElementById('startTripList'); wrap.innerHTML=''; if(visible.length===0){ wrap.innerHTML='<div class="text-sm text-slate-400">No trips available.</div>'; return; }
-  visible.forEach(t=>{ const row=document.createElement('div'); row.className='list-row flex items-center justify-between'; row.innerHTML=`<div><div class="font-semibold">${t.name}</div><div class="text-xs text-slate-500">${t.locs.map(x=>x.name).join(' → ')}</div></div><div><button class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded" onclick="startTripById('${t.id}')">Start</button></div>`; wrap.appendChild(row); });
 }
 
 function startSelectedTrip(){ const id=document.getElementById('startTripSelect').value; if(!id) return alert('Select trip'); startTripById(id); }
@@ -735,6 +752,22 @@ function updateUpcomingAndCheck(lat,lng,speedMs){
   const trip = runtime.active; if(!trip) return;
   if(trip.idx >= trip.locs.length) return;
 
+  // Dynamic path correction: detect if we're significantly closer to a later stop than the current next stop
+  try{
+    let nearestIdx = trip.idx;
+    let nearestDist = Infinity;
+    for(let i=trip.idx;i<trip.locs.length;i++){
+      const d = haversine(lat,lng,trip.locs[i].lat,trip.locs[i].lng);
+      if(d < nearestDist){ nearestDist = d; nearestIdx = i; }
+    }
+    // if nearest is ahead by more than a threshold (e.g., 200m) and not current, correct
+    if(nearestIdx !== trip.idx && nearestDist + 50 < haversine(lat,lng,trip.locs[trip.idx].lat,trip.locs[trip.idx].lng)){
+      console.warn('Detected deviation, correcting index from', trip.idx, 'to', nearestIdx);
+      toast('Route auto-corrected to: ' + trip.locs[nearestIdx].name, 3000);
+      trip.idx = nearestIdx;
+    }
+  }catch(e){ console.warn('Path-correct error', e); }
+
   const next = trip.locs[trip.idx];
   const d = haversine(lat,lng,next.lat,next.lng); // meters
   document.getElementById('upcomingName').textContent = next.name;
@@ -768,8 +801,8 @@ function updateUpcomingAndCheck(lat,lng,speedMs){
   // Announce custom message (up to 3x) while within preRadius
   if(!next._arrived && d <= preRadius && next._enterCount < 3){
     next._enterCount++;
-    const msg = next.msg && next.msg.trim() ? next.msg : `Next stop: ${next.name}`;
-    speak(msg);
+    // prefer audio if present
+    playAnnouncement(next);
   }
 
   // Arrival: mark arrived, increment idx, update progress
@@ -781,13 +814,12 @@ function updateUpcomingAndCheck(lat,lng,speedMs){
     try{ if(runMarkers[trip.idx]) runMarkers[trip.idx].setIcon(L.icon({ iconUrl:'https://cdn-icons-png.flaticon.com/512/190/190411.png', iconSize:[28,28] })); }catch(e){}
     try{ if(runCircles[trip.idx]) runCircles[trip.idx].setStyle({ color:'#16a34a' }); }catch(e){}
 
+    // announce arrival (use same message or distinct)
+    playAnnouncement(next);
+
     // increment to next
     trip.idx++;
     updateProgressUI();
-
-    // announce arrival (use same message or a distinct 'arrived' message)
-    const arrMsg = next.msg && next.msg.trim() ? next.msg : `Arrived at ${next.name}`;
-    speak(arrMsg);
 
     // if completed all stops, finalize
     if(trip.idx >= trip.locs.length){
@@ -819,7 +851,7 @@ function finishAndSaveRun(){
   setTimeout(()=> endTrip(), 800);
 }
 
-function manualAnn(){ if(!runtime.active) return; const idx = Math.max(0, Math.min(runtime.active.idx, runtime.active.locs.length-1)); const next = runtime.active.locs[idx]; const msg = next.msg && next.msg.trim() ? next.msg : `Next stop: ${next.name}`; speak(msg); }
+function manualAnn(){ if(!runtime.active) return; const idx = Math.max(0, Math.min(runtime.active.idx, runtime.active.locs.length-1)); const next = runtime.active.locs[idx]; playAnnouncement(next); }
 
 function endTrip(){
   if(!runtime.active) return;
@@ -845,9 +877,24 @@ function endTrip(){
 function centerMap(){ if(runtime.lastPos && runMap) runMap.panTo([runtime.lastPos.coords.latitude, runtime.lastPos.coords.longitude]); }
 function centerCurrentGPS(){ if(!navigator.geolocation) return alert('Geolocation not available'); navigator.geolocation.getCurrentPosition(p=>{ onGPS(p); runMap.panTo([p.coords.latitude,p.coords.longitude]); }, err=>alert('GPS error: '+err.message)); }
 
-/* TTS and volume */
+/* TTS and audio handling */
 function setVolume(v){ runtime.ttsVolume = Number(v); toast('Volume: ' + runtime.ttsVolume); }
 function speak(text){ try{ const u = new SpeechSynthesisUtterance(text); u.volume = Number(runtime.ttsVolume || 1.0); speechSynthesis.speak(u); }catch(e){ console.warn('TTS error', e); } }
+
+function playAnnouncement(loc){
+  if(!loc) return;
+  try{
+    if(loc.audio){
+      const a = new Audio(loc.audio);
+      a.volume = Number(runtime.ttsVolume || 1.0);
+      a.play().catch(e=>{ console.warn('Audio play failed, falling back to TTS', e); if(loc.msg) speak(loc.msg); });
+    } else if(loc.msg && loc.msg.trim()){
+      speak(loc.msg);
+    } else {
+      speak('Next stop');
+    }
+  }catch(e){ console.warn('playAnnouncement error', e); }
+}
 
 /* =========================
    Periodic refresh
