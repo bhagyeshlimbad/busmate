@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>BusMate — Full Prototype (Audio Announce + Path Correction)</title>
+  <title>BusMate - Test Mode</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
 
   <!-- Tailwind CSS -->
@@ -24,8 +24,8 @@
     .small-muted{ color:#64748b; font-size:.9rem; }
     .hidden{ display:none!important; }
     .page-back{ margin-bottom:.75rem; }
-    /* small tweaks for long page readability */
     .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, 'Roboto Mono', monospace; }
+    .logo-small{ width:36px;height:24px;object-fit:contain;border-radius:4px; }
   </style>
 </head>
 <body class="bg-slate-50 text-slate-900">
@@ -37,7 +37,7 @@
       <div id="logoBox" class="w-10 h-10 bg-white rounded-md flex items-center justify-center text-blue-600 font-bold">BM</div>
       <div>
         <div id="companyTitle" class="font-semibold">BusMate</div>
-        <div id="companySub" class="text-xs opacity-90">Vehicle Tracking Prototype</div>
+        <div id="companySub" class="text-xs opacity-90">Smart Buddy for Bus Operator</div>
       </div>
     </div>
     <div class="flex items-center gap-4">
@@ -65,8 +65,8 @@
         <label class="block text-sm">Password</label>
         <input id="loginPass" type="password" class="w-full rounded-lg border px-3 py-2" placeholder="password" />
         <div class="flex gap-2 mt-4">
-          <button class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700" onclick="handleLogin()">Login</button>
-          <button class="bg-slate-100 px-4 py-2 rounded hover:bg-slate-200" onclick="showHelp()">Help</button>
+          <button id="loginBtn" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700" onclick="handleLogin()">Login</button>
+          <button id="helpBtn" class="bg-slate-100 px-4 py-2 rounded hover:bg-slate-200" onclick="showHelp()">Help</button>
         </div>
         <div class="text-xs text-slate-400 mt-3">Managed by: <a href="mailto:bhagyeshlimbad@gmail.com" class="underline">bhagyeshlimbad@gmail.com</a></div>
       </div>
@@ -125,6 +125,19 @@
           <div><div class="text-sm text-slate-500">Trips</div><div id="statTrips" class="font-semibold">0</div></div>
           <div><div class="text-sm text-slate-500">Companies</div><div id="statCompanies" class="font-semibold">0</div></div>
           <div><div class="text-sm text-slate-500">Runs</div><div id="statRuns" class="font-semibold">0</div></div>
+        </div>
+      </div>
+
+      <!-- Account / Password -->
+      <div id="passwordBox" class="bg-white rounded-xl shadow p-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 class="font-semibold">My Account</h3>
+            <div class="text-xs text-slate-500">Change your password</div>
+          </div>
+          <div>
+            <button class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded" onclick="openPasswordForm()">Change Password</button>
+          </div>
         </div>
       </div>
     </div>
@@ -261,6 +274,19 @@
     </div>
   </section>
 
+  <!-- PASSWORD MODAL (like Manage Trip modal) -->
+  <div id="passwordModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+    <div class="bg-white p-4 rounded-xl w-96">
+      <h3 class="font-semibold">Change Password</h3>
+      <input id="newPassModal1" type="password" class="w-full border rounded px-3 py-2 mt-3" placeholder="New password" />
+      <input id="newPassModal2" type="password" class="w-full border rounded px-3 py-2 mt-2" placeholder="Confirm new password" />
+      <div class="flex gap-2 mt-3 justify-end">
+        <button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="closePasswordModal()">Cancel</button>
+        <button class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700" onclick="savePassword()">Save</button>
+      </div>
+    </div>
+  </div>
+
   <!-- START TRIP -->
   <section id="pageStartTrip" class="hidden">
     <div id="startPanel" class="bg-white rounded-xl shadow p-4">
@@ -378,147 +404,163 @@
 <!-- toast -->
 <div id="toast" class="hidden fixed bottom-6 right-6 bg-slate-800 text-white px-4 py-2 rounded shadow"></div>
 
-<script>
-/* =========================
-   STORAGE & STATE
-   ========================= */
-const LS = {
-  get(k, def){ try{ return JSON.parse(localStorage.getItem(k)) ?? def; }catch(e){ return def; } },
-  set(k,v){ localStorage.setItem(k, JSON.stringify(v)); }
-};
-const K = {
-  COMPANIES:'bm_companies',
-  USERS:'bm_users',
-  LOCS:'bm_locations',
-  TRIPS:'bm_trips',
-  RUNS:'bm_runs',
-  LOGINS:'bm_logins',
-  SESSION:'bm_session'
-};
-if(!LS.get(K.COMPANIES)) LS.set(K.COMPANIES, []);
-if(!LS.get(K.USERS)) LS.set(K.USERS, []);
-if(!LS.get(K.LOCS)) LS.set(K.LOCS, []);
-if(!LS.get(K.TRIPS)) LS.set(K.TRIPS, []);
-if(!LS.get(K.RUNS)) LS.set(K.RUNS, []);
-if(!LS.get(K.LOGINS)) LS.set(K.LOGINS, []);
+<!-- Supabase client import and main logic -->
+<script type="module">
+/* Supabase config */
+const SUPABASE_URL = 'https://wxulwistfjspubqhidrr.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4dWx3aXN0ZmpzcHVicWhpZHJyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcxNzExNDgsImV4cCI6MjA3Mjc0NzE0OH0.y3BVIcjcx17QABUTsSkD3hAgyGhu5evILiKXbrcrBLQ';
 
-// small utilities
-function uid(pref='id'){ return pref + '_' + Math.random().toString(36).slice(2,9); }
-function toast(msg, ms=1800){ const el=document.getElementById('toast'); el.textContent=msg; el.classList.remove('hidden'); setTimeout(()=>el.classList.add('hidden'), ms); }
+/* load supabase-js as ES module */
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+window.SB = sb;
+
+/* helpers */
+const Cache = { _cache:{}, get(key){ return this._cache[key]; }, set(key,val){ this._cache[key]=val; } };
+function toast(msg, ms=1600){ const el=document.getElementById('toast'); el.textContent=msg; el.classList.remove('hidden'); setTimeout(()=>el.classList.add('hidden'), ms); }
 function fmtISO(iso){ try{ return new Date(iso).toLocaleString(); }catch(e){ return iso; } }
+function uid(pref='id'){ return pref + '_' + Math.random().toString(36).slice(2,9); }
 function haversine(lat1,lon1,lat2,lon2){ const toRad=v=>v*Math.PI/180; const R=6371000; const dLat=toRad(lat2-lat1); const dLon=toRad(lon2-lon1); const a=Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lon2))*Math.sin(dLon/2)**2; const c=2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a)); return R*c; }
 
-/* =========================
-   Seed minimal data if empty
-   ========================= */
-(function seed(){
-  if(LS.get(K.COMPANIES,[]).length===0){
-    const comp = { id: uid('comp'), name:'Demo Transit Co', logo:'', enabled:true };
-    LS.set(K.COMPANIES, [comp]);
-    LS.set(K.USERS, [
-      { username:'bhagyesh', pass:'bhagyesh', role:'Master', companyId:null, enabled:true, displayName:'Bhagyesh Limbad' },
-      { username:'admin', pass:'admin', role:'Admin', companyId:comp.id, enabled:true, displayName:'Admin' },
-      { username:'operator', pass:'operator', role:'Operator', companyId:comp.id, enabled:true, displayName:'Operator 1' }
-    ]);
-    const locs = [
-      { id: uid('loc'), name:'Station A', lat:21.6417, lng:69.6293, radius:500, msg:'Station A — please prepare to disembark', audio:null, companyId:comp.id },
-      { id: uid('loc'), name:'Station B', lat:21.6517, lng:69.6390, radius:400, msg:'Station B — doors will open on the left', audio:null, companyId:comp.id },
-      { id: uid('loc'), name:'Station C', lat:21.6617, lng:69.6490, radius:300, msg:'Station C — final stop', audio:null, companyId:comp.id }
-    ];
-    LS.set(K.LOCS, locs);
-    LS.set(K.TRIPS, [{ id: uid('trip'), name:'Demo Route', locs: locs.map(l=>({...l})), companyId: comp.id }]);
-  }
-})();
-
-/* =========================
-   Runtime
-   ========================= */
-let locMap=null, locMarker=null, locCircle=null;
-let runMap=null, runMarkers=[], runCircles=[], runPolyline=null;
-let watchId = null, autoRefreshIntervalId = null;
-let runtime = {
-  active: null, // { tripId, name, locs[], startedAt, reached:[], idx, meMarker }
-  lastPos: null,
-  ttsVolume: 1
-};
-
-/* =========================
-   Navigation helper
-   ========================= */
-function go(pageId){
-  // hide all main sections
-  document.querySelectorAll('main section').forEach(s => s.classList.add('hidden'));
-  const el = document.getElementById(pageId);
-  if(el) el.classList.remove('hidden');
-
-  // page-specific inits
-  if(pageId==='pageLocations'){ setTimeout(initLocMap,80); renderLocationList(); }
-  if(pageId==='pageTripSetup'){ renderAvailList(); renderPlanned(); renderTripList(); }
-  if(pageId==='pageStartTrip'){ renderStartSelect(); }
-  if(pageId==='pageReports'){ renderReports(); }
-  if(pageId==='pageUsers'){ renderUserList(); }
-  if(pageId==='pageMasterAdmin'){ renderCompanyList(); }
+/* DB helpers */
+async function db_select(table, opts={}) {
+  let q = sb.from(table).select('*');
+  if(opts.eq) for(const k in opts.eq) q = q.eq(k, opts.eq[k]);
+  if(opts.order) q = q.order(opts.order.col, { ascending: opts.order.asc });
+  const { data, error } = await q;
+  if(error) { console.error('db_select error', table, error); return []; }
+  return data || [];
+}
+async function db_insert(table, records) {
+  const { data, error } = await sb.from(table).insert(records).select();
+  if(error){ console.error('db_insert error', table, error); throw error; }
+  return data;
+}
+async function db_update(table, updates, match) {
+  const { data, error } = await sb.from(table).update(updates).match(match).select();
+  if(error){ console.error('db_update error', table, error); throw error; }
+  return data;
+}
+async function db_delete(table, match) {
+  const { data, error } = await sb.from(table).delete().match(match).select();
+  if(error){ console.error('db_delete error', table, error); throw error; }
+  return data;
 }
 
-/* =========================
-   Auth
-   ========================= */
-function handleLogin(){
+/* Storage helpers: upload & create signed URL (1000 days) */
+async function uploadAudioFile(file, destPath){
+  if(!file) return null;
+  const filename = `${Date.now()}_${file.name.replace(/\s/g,'_')}`;
+  const path = `${destPath || 'location_audio'}/${filename}`;
+  // upload
+  const { error: upErr } = await sb.storage.from('audio').upload(path, file, { cacheControl: '3600', upsert: false });
+  if(upErr){ console.error('uploadAudioFile error', upErr); throw upErr; }
+  // create signed URL valid ~1000 days
+  const expiry = 60 * 60 * 24 * 1000; // seconds = 1000 days
+  const { data, error } = await sb.storage.from('audio').createSignedUrl(path, expiry);
+  if(error){ console.error('createSignedUrl error', error); return null; }
+  return data?.signedUrl || null;
+}
+
+/* seed demo */
+async function seedDemoIfEmpty(){
+  try{
+    const comps = await db_select('companies');
+    if(comps.length>0) return;
+    const [comp] = await db_insert('companies', [{ id: uid('comp'), name:'Demo Transit Co', logo:'', enabled:true }]);
+    await db_insert('users', [
+      { username:'bhagyesh', pass:'bhagyesh', role:'Master', company_id:null, enabled:true, display_name:'Bhagyesh Limbad' },
+      { username:'admin', pass:'admin', role:'Admin', company_id:comp.id, enabled:true, display_name:'Admin' },
+      { username:'operator', pass:'operator', role:'Operator', company_id:comp.id, enabled:true, display_name:'Operator 1' }
+    ]);
+    const locs = [
+      { id: uid('loc'), name:'Station A', lat:21.6417, lng:69.6293, radius:500, msg:'Station A — please prepare to disembark', audio_url:null, company_id:comp.id },
+      { id: uid('loc'), name:'Station B', lat:21.6517, lng:69.6390, radius:400, msg:'Station B — doors will open on the left', audio_url:null, company_id:comp.id },
+      { id: uid('loc'), name:'Station C', lat:21.6617, lng:69.6490, radius:300, msg:'Station C — final stop', audio_url:null, company_id:comp.id }
+    ];
+    await db_insert('locations', locs);
+    await db_insert('trips', [{ id: uid('trip'), name:'Demo Route', locs: locs, company_id:comp.id }]);
+    console.log('Seeded demo data.');
+  }catch(e){ console.warn('seedDemoIfEmpty err', e); }
+}
+
+/* Authentication */
+async function handleLogin(){
   const userInput = (document.getElementById('loginUser').value||'').trim();
   const passInput = (document.getElementById('loginPass').value||'').trim();
   if(!userInput) return alert('Enter username');
 
-  // Master admin quick credentials
+  // Master quick-check
   if(userInput.toLowerCase()==='bhagyesh' && passInput==='bhagyesh'){
-    const s = { user:'bhagyesh', role:'Master', companyId:null, displayName:'Bhagyesh Limbad' };
-    LS.set(K.SESSION, s); logLogin(s.user, s.role); bootAfterLogin(); return;
+    const s = { user:'bhagyesh', role:'Master', company_id:null, display_name:'Bhagyesh Limbad' };
+    await saveSessionLocally(s);
+    await logLogin(s.user, s.role);
+    bootAfterLogin(); 
+    return;
   }
 
-  const users = LS.get(K.USERS,[]);
+  const users = await db_select('users');
   const found = users.find(u => u.username.toLowerCase() === userInput.toLowerCase() && u.pass === passInput);
   if(!found) return alert('Invalid credentials');
   if(found.enabled===false) return alert('User disabled');
-
-  const sess = { user: found.username, role: found.role, companyId: found.companyId || null, displayName: found.displayName || found.username };
-  LS.set(K.SESSION, sess); logLogin(sess.user, sess.role); bootAfterLogin();
+  const sess = { user: found.username, role: found.role, company_id: found.company_id || null, display_name: found.display_name || found.username };
+  await saveSessionLocally(sess);
+  await logLogin(sess.user, sess.role);
+  bootAfterLogin();
 }
-function logLogin(user, role){ const logs = LS.get(K.LOGINS,[]); logs.push({ user, role, time:new Date().toISOString(), device:navigator.userAgent, ip:'0.0.0.0' }); LS.set(K.LOGINS, logs); }
-function logout(){
-  LS.set(K.SESSION, null);
-  if(watchId!==null) { navigator.geolocation.clearWatch(watchId); watchId=null; }
-  if(autoRefreshIntervalId!==null) { clearInterval(autoRefreshIntervalId); autoRefreshIntervalId=null; }
+async function saveSessionLocally(sess){ localStorage.setItem('bm_session', JSON.stringify(sess)); }
+function getSessionLocally(){ try{ return JSON.parse(localStorage.getItem('bm_session')); }catch(e){ return null; } }
+function clearSessionLocal(){ localStorage.removeItem('bm_session'); }
+
+async function logLogin(user, role){
+  try{ await db_insert('logins', [{ user, role, time: new Date().toISOString(), device: navigator.userAgent }]); }catch(e){ console.warn('logLogin failed', e); }
+}
+
+async function logout(){
+  clearSessionLocal();
+  if(watchId!==null){ navigator.geolocation.clearWatch(watchId); watchId=null; }
+  if(autoRefreshIntervalId!==null){ clearInterval(autoRefreshIntervalId); autoRefreshIntervalId=null; }
   runtime.active=null;
   document.getElementById('pageLogin').classList.remove('hidden');
   document.getElementById('pageHome').classList.add('hidden');
   document.getElementById('logoutBtn').classList.add('hidden');
   document.getElementById('userLabel').textContent = 'Guest';
   document.getElementById('roleLabel').textContent = '';
+  toast('Logged out');
 }
 
-/* After login boot */
-function bootAfterLogin(){
-  const s = LS.get(K.SESSION, null);
+async function bootAfterLogin(){
+  const s = getSessionLocally();
   if(!s) return;
   document.getElementById('logoutBtn').classList.remove('hidden');
-  document.getElementById('userLabel').textContent = s.displayName || s.user;
+  document.getElementById('userLabel').textContent = s.display_name || s.user;
   document.getElementById('roleLabel').textContent = s.role;
-  applyHeader();
+  await applyHeader();
   go('pageHome');
 }
 
-/* header & tile visibility */
-function applyHeader(){
-  const s = LS.get(K.SESSION, null);
-  const comps = LS.get(K.COMPANIES,[]);
-  const comp = s?.companyId ? comps.find(c=>c.id===s.companyId) : null;
+/* change password modal functions */
+function openPasswordForm(){ document.getElementById('passwordModal').classList.remove('hidden'); document.getElementById('newPassModal1').value=''; document.getElementById('newPassModal2').value=''; }
+function closePasswordModal(){ document.getElementById('passwordModal').classList.add('hidden'); }
+async function savePassword(){
+  const s = getSessionLocally(); if(!s) return alert('Not logged in');
+  const p1 = document.getElementById('newPassModal1').value.trim(); const p2 = document.getElementById('newPassModal2').value.trim();
+  if(!p1 || !p2) return alert('Enter both fields'); if(p1!==p2) return alert('Passwords do not match');
+  try{ await db_update('users', { pass: p1 }, { username: s.user }); closePasswordModal(); toast('Password updated. Please login again.'); logout(); }catch(e){ console.error('savePassword err', e); alert('Could not update password'); }
+}
+
+/* applyHeader */
+async function applyHeader(){
+  const s = getSessionLocally();
+  const comps = await db_select('companies');
+  const comp = s?.company_id ? comps.find(c=>c.id===s.company_id) : null;
   document.getElementById('companyTitle').textContent = comp?.name || 'BusMate';
   document.getElementById('companySub').textContent = 'Vehicle Tracking Prototype';
   if(!s) return;
-
-  document.getElementById('userLabel').textContent = s.displayName || s.user;
+  document.getElementById('userLabel').textContent = s.display_name || s.user;
   document.getElementById('roleLabel').textContent = s.role;
 
-  // show tiles
+  // show tiles based on role
   ['tileCompanies','tileUsers','tileLocations','tileTrips','tileStart','tileReports'].forEach(id=>document.getElementById(id).classList.add('hidden'));
   if(s.user==='bhagyesh' || s.role==='Master'){
     ['tileCompanies','tileUsers','tileLocations','tileTrips','tileStart','tileReports'].forEach(id=>document.getElementById(id).classList.remove('hidden'));
@@ -528,22 +570,40 @@ function applyHeader(){
     ['tileStart','tileReports'].forEach(id=>document.getElementById(id).classList.remove('hidden'));
   }
 
-  document.getElementById('statLocations').textContent = LS.get(K.LOCS,[]).length;
-  document.getElementById('statTrips').textContent = LS.get(K.TRIPS,[]).length;
-  document.getElementById('statCompanies').textContent = LS.get(K.COMPANIES,[]).length;
-  document.getElementById('statRuns').textContent = LS.get(K.RUNS,[]).length;
+  const [locCount, tripCount, compCount, runCount] = await Promise.all([
+    db_select('locations').then(d=>d.length).catch(()=>0),
+    db_select('trips').then(d=>d.length).catch(()=>0),
+    db_select('companies').then(d=>d.length).catch(()=>0),
+    db_select('runs').then(d=>d.length).catch(()=>0)
+  ]);
+  document.getElementById('statLocations').textContent = locCount;
+  document.getElementById('statTrips').textContent = tripCount;
+  document.getElementById('statCompanies').textContent = compCount;
+  document.getElementById('statRuns').textContent = runCount;
 }
 
-/* =========================
-   COMPANY (master)
-   ========================= */
-function renderCompanyList(){
+/* navigation helper with map invalidation */
+function go(pageId){
+  document.querySelectorAll('main section').forEach(s => s.classList.add('hidden'));
+  const el = document.getElementById(pageId);
+  if(el) el.classList.remove('hidden');
+  if(pageId==='pageLocations'){ setTimeout(()=>{ initLocMap(); if(locMap) try{ locMap.invalidateSize(); }catch(e){} },80); renderLocationList(); }
+  if(pageId==='pageTripSetup'){ renderAvailList(); renderPlanned(); renderTripList(); }
+  if(pageId==='pageStartTrip'){ renderStartSelect(); setTimeout(()=>{ if(runMap) try{ runMap.invalidateSize(); }catch(e){} },300); }
+  if(pageId==='pageReports'){ renderReports(); }
+  if(pageId==='pageUsers'){ renderUserList(); }
+  if(pageId==='pageMasterAdmin'){ renderCompanyList(); }
+}
+
+/* Company CRUD */
+let _editingCompany = null;
+async function renderCompanyList(){
   const wrap = document.getElementById('companyList'); wrap.innerHTML='';
-  const comps = LS.get(K.COMPANIES,[]);
+  const comps = await db_select('companies');
   if(comps.length===0){ wrap.innerHTML = '<div class="text-sm text-slate-400">No companies</div>'; return; }
   comps.forEach(c=>{
     const div = document.createElement('div'); div.className='flex items-center justify-between';
-    div.innerHTML = `<div><div class="font-semibold">${c.name}</div><div class="text-xs text-slate-500">${c.id} · ${c.enabled ? 'Enabled' : 'Disabled'}</div></div>
+    div.innerHTML = `<div class="flex items-center gap-3"><img src="${c.logo||''}" class="logo-small" onerror="this.style.display='none'"/><div><div class="font-semibold">${c.name}</div><div class="text-xs text-slate-500">${c.id} · ${c.enabled ? 'Enabled' : 'Disabled'}</div></div></div>
       <div class="flex gap-2">
         <button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="editCompany('${c.id}')">Edit</button>
         <button class="${c.enabled?'bg-yellow-500':'bg-green-600'} text-white px-3 py-1 rounded" onclick="toggleCompany('${c.id}')">${c.enabled ? 'Disable':'Enable'}</button>
@@ -554,42 +614,103 @@ function renderCompanyList(){
 }
 function openCompanyForm(){ document.getElementById('companyModal').classList.remove('hidden'); document.getElementById('companyNameInp').value=''; document.getElementById('companyLogoInp').value=''; window._editingCompany=null; }
 function closeCompanyModal(){ document.getElementById('companyModal').classList.add('hidden'); window._editingCompany=null; }
-function saveCompany(){ const name=(document.getElementById('companyNameInp').value||'').trim(); const logo=(document.getElementById('companyLogoInp').value||'').trim(); if(!name) return alert('Company name required'); const comps=LS.get(K.COMPANIES,[]); if(window._editingCompany){ const i=comps.findIndex(c=>c.id===window._editingCompany); if(i>=0){ comps[i].name=name; comps[i].logo=logo; } } else { comps.push({ id: uid('comp'), name, logo, enabled:true }); } LS.set(K.COMPANIES, comps); renderCompanyList(); closeCompanyModal(); applyHeader(); toast('Company saved'); }
-function editCompany(id){ const comps=LS.get(K.COMPANIES,[]); const c=comps.find(x=>x.id===id); if(!c) return; window._editingCompany=id; document.getElementById('companyNameInp').value=c.name; document.getElementById('companyLogoInp').value=c.logo||''; document.getElementById('companyModal').classList.remove('hidden'); }
-function toggleCompany(id){ const comps=LS.get(K.COMPANIES,[]); const i=comps.findIndex(c=>c.id===id); if(i===-1) return; comps[i].enabled=!comps[i].enabled; LS.set(K.COMPANIES, comps); renderCompanyList(); }
-function deleteCompany(id){ if(!confirm('Delete company and related data?')) return; LS.set(K.COMPANIES, LS.get(K.COMPANIES,[]).filter(c=>c.id!==id)); LS.set(K.USERS, LS.get(K.USERS,[]).filter(u=>u.companyId!==id)); LS.set(K.LOCS, LS.get(K.LOCS,[]).filter(l=>l.companyId!==id)); LS.set(K.TRIPS, LS.get(K.TRIPS,[]).filter(t=>t.companyId!==id)); renderCompanyList(); renderUserList(); renderLocationList(); renderTripList(); toast('Company deleted'); }
+async function saveCompany(){
+  const name=(document.getElementById('companyNameInp').value||'').trim(); const logo=(document.getElementById('companyLogoInp').value||'').trim();
+  if(!name) return alert('Company name required');
+  try{
+    if(window._editingCompany){
+      await db_update('companies', { name, logo }, { id: window._editingCompany });
+    } else {
+      await db_insert('companies', [{ id: uid('comp'), name, logo, enabled:true }]);
+    }
+    await renderCompanyList();
+    closeCompanyModal();
+    await applyHeader();
+    toast('Company saved');
+  }catch(e){ alert('Error saving company'); console.error(e); }
+}
+async function editCompany(id){
+  const comps=await db_select('companies'); const c=comps.find(x=>x.id===id); if(!c) return;
+  window._editingCompany=id;
+  document.getElementById('companyNameInp').value=c.name; document.getElementById('companyLogoInp').value=c.logo||''; document.getElementById('companyModal').classList.remove('hidden');
+}
+async function toggleCompany(id){
+  try{
+    const comps = await db_select('companies'); const idx = comps.findIndex(c=>c.id===id);
+    if(idx===-1) return;
+    const newVal = !comps[idx].enabled;
+    await db_update('companies', { enabled: newVal }, { id });
+    await renderCompanyList();
+    await applyHeader();
+  }catch(e){ console.warn('toggleCompany', e); }
+}
+async function deleteCompany(id){
+  if(!confirm('Delete company and related data?')) return;
+  try{
+    await db_delete('companies', { id });
+    await db_delete('users', { company_id: id });
+    await db_delete('locations', { company_id: id });
+    await db_delete('trips', { company_id: id });
+    await renderCompanyList(); await renderUserList(); await renderLocationList(); await renderTripList(); toast('Company deleted');
+  }catch(e){ console.error('deleteCompany', e); alert('Delete failed'); }
+}
 
-/* =========================
-   USERS (company scoped)
-   ========================= */
-function renderUserList(){
+/* Users */
+let _editingUser = null;
+async function renderUserList(){
   const wrap = document.getElementById('usersList'); wrap.innerHTML='';
-  const s = LS.get(K.SESSION, null);
-  const users = LS.get(K.USERS,[]);
-  const visible = (!s || s.user==='bhagyesh') ? users : users.filter(u=>u.companyId===s.companyId);
+  const s = getSessionLocally();
+  const users = await db_select('users');
+  const visible = (!s || s.user==='bhagyesh') ? users : users.filter(u=>u.company_id===s.company_id);
   if(visible.length===0){ wrap.innerHTML = '<div class="text-sm text-slate-400">No users</div>'; return; }
+  const comps = await db_select('companies');
   visible.forEach(u=>{
-    const comp = LS.get(K.COMPANIES,[]).find(c=>c.id===u.companyId);
+    const comp = comps.find(c=>c.id===u.company_id);
     const div = document.createElement('div'); div.className='list-row flex items-center justify-between';
-    div.innerHTML = `<div><div class="font-medium">${u.displayName || u.username} <span class="chip">${u.role}</span></div><div class="text-xs text-slate-500">${u.username} · ${comp?comp.name:'—'}</div></div>
+    div.innerHTML = `<div><div class="font-medium">${u.display_name || u.username} <span class="chip">${u.role}</span></div><div class="text-xs text-slate-500">${u.username} · ${comp?comp.name:'—'}</div></div>
       <div class="flex gap-2"><button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="editUser('${u.username}')">Edit</button><button class="bg-yellow-500 px-3 py-1 rounded text-white" onclick="toggleUser('${u.username}')">${u.enabled? 'Disable':'Enable'}</button><button class="bg-red-600 px-3 py-1 rounded text-white" onclick="deleteUser('${u.username}')">Delete</button></div>`;
     wrap.appendChild(div);
   });
 }
-function openUserForm(){
-  const comps = LS.get(K.COMPANIES,[]); const sel = document.getElementById('userCompanyInp'); sel.innerHTML=''; comps.forEach(c=>{ const o=document.createElement('option'); o.value=c.id; o.textContent=c.name; sel.appendChild(o); });
-  window._editingUser=null; document.getElementById('userNameInp').value=''; document.getElementById('userPassInp').value=''; document.getElementById('userDisplayInp').value=''; document.getElementById('userRoleInp').value='Operator'; document.getElementById('userModal').classList.remove('hidden');
+async function openUserForm(){
+  const comps = await db_select('companies'); const sel = document.getElementById('userCompanyInp'); sel.innerHTML=''; comps.forEach(c=>{ const o=document.createElement('option'); o.value=c.id; o.textContent=c.name; sel.appendChild(o); });
+  _editingUser=null; document.getElementById('userNameInp').value=''; document.getElementById('userPassInp').value=''; document.getElementById('userDisplayInp').value=''; document.getElementById('userRoleInp').value='Operator'; document.getElementById('userModal').classList.remove('hidden');
 }
-function closeUserModal(){ document.getElementById('userModal').classList.add('hidden'); window._editingUser=null; document.getElementById('userNameInp').disabled=false; }
-function saveUser(){ const username=(document.getElementById('userNameInp').value||'').trim(); const pass=(document.getElementById('userPassInp').value||'').trim(); const display=(document.getElementById('userDisplayInp').value||'').trim(); const role=document.getElementById('userRoleInp').value; const companyId=document.getElementById('userCompanyInp').value||null; if(!username||!pass) return alert('Username & password required'); const users=LS.get(K.USERS,[]); if(window._editingUser){ const i=users.findIndex(u=>u.username===window._editingUser); if(i>=0){ users[i].pass=pass; users[i].displayName=display; users[i].role=role; users[i].companyId=companyId; users[i].enabled=true; } } else { if(users.find(u=>u.username===username)) return alert('Username exists'); users.push({ username, pass, role, companyId, enabled:true, displayName:display }); } LS.set(K.USERS, users); closeUserModal(); renderUserList(); toast('User saved'); }
-function editUser(username){ const users=LS.get(K.USERS,[]); const u=users.find(x=>x.username===username); if(!u) return; window._editingUser=username; document.getElementById('userNameInp').value=u.username; document.getElementById('userNameInp').disabled=true; document.getElementById('userPassInp').value=u.pass; document.getElementById('userDisplayInp').value=u.displayName||''; document.getElementById('userRoleInp').value=u.role; const comps=LS.get(K.COMPANIES,[]); const sel=document.getElementById('userCompanyInp'); sel.innerHTML=''; comps.forEach(c=>{ const o=document.createElement('option'); o.value=c.id; o.textContent=c.name; if(c.id===u.companyId) o.selected=true; sel.appendChild(o); }); document.getElementById('userModal').classList.remove('hidden'); }
-function toggleUser(username){ const users=LS.get(K.USERS,[]); const i=users.findIndex(u=>u.username===username); if(i===-1) return; users[i].enabled = !users[i].enabled; LS.set(K.USERS, users); renderUserList(); }
-function deleteUser(username){ if(!confirm('Delete user?')) return; LS.set(K.USERS, LS.get(K.USERS,[]).filter(u=>u.username!==username)); renderUserList(); toast('User deleted'); }
+function closeUserModal(){ document.getElementById('userModal').classList.add('hidden'); _editingUser=null; document.getElementById('userNameInp').disabled=false; }
+async function saveUser(){
+  const username=(document.getElementById('userNameInp').value||'').trim(); const pass=(document.getElementById('userPassInp').value||'').trim(); const display=(document.getElementById('userDisplayInp').value||'').trim(); const role=document.getElementById('userRoleInp').value; const companyId=document.getElementById('userCompanyInp').value||null;
+  if(!username||!pass) return alert('Username & password required');
+  try{
+    const users = await db_select('users');
+    if(_editingUser){
+      await db_update('users', { pass, display_name: display, role, company_id: companyId, enabled:true }, { username: _editingUser });
+    } else {
+      if(users.find(u=>u.username===username)) return alert('Username exists');
+      await db_insert('users', [{ username, pass, role, company_id: companyId, enabled:true, display_name: display }]);
+    }
+    closeUserModal(); await renderUserList(); toast('User saved');
+  }catch(e){ console.error('saveUser', e); alert('Failed to save'); }
+}
+async function editUser(username){
+  const users = await db_select('users'); const u = users.find(x=>x.username===username); if(!u) return;
+  _editingUser=username; document.getElementById('userNameInp').value=u.username; document.getElementById('userNameInp').disabled=true; document.getElementById('userPassInp').value=u.pass; document.getElementById('userDisplayInp').value=u.display_name||''; document.getElementById('userRoleInp').value=u.role;
+  const comps=await db_select('companies'); const sel=document.getElementById('userCompanyInp'); sel.innerHTML=''; comps.forEach(c=>{ const o=document.createElement('option'); o.value=c.id; o.textContent=c.name; if(c.id===u.company_id) o.selected=true; sel.appendChild(o); });
+  document.getElementById('userModal').classList.remove('hidden');
+}
+async function toggleUser(username){
+  try{
+    const users = await db_select('users'); const u = users.find(x=>x.username===username); if(!u) return;
+    await db_update('users', { enabled: !u.enabled }, { username });
+    await renderUserList();
+  }catch(e){ console.warn('toggleUser', e); }
+}
+async function deleteUser(username){
+  if(!confirm('Delete user?')) return; try{ await db_delete('users', { username }); await renderUserList(); toast('User deleted'); }catch(e){ console.error('deleteUser', e); alert('Delete failed'); }
+}
 
-/* =========================
-   LOCATIONS (map picker) 
-   ========================= */
-function initLocMap(){
+/* Locations */
+let locMap=null, locMarker=null, locCircle=null;
+async function initLocMap(){
   if(locMap){ try{ locMap.invalidateSize(); }catch(e){} return; }
   locMap = L.map('locMap');
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution:'© OpenStreetMap' }).addTo(locMap);
@@ -617,38 +738,43 @@ function useCurrentGPS(){
   navigator.geolocation.getCurrentPosition(p=>{ locMap.setView([p.coords.latitude,p.coords.longitude],16); setPicker(p.coords.latitude,p.coords.longitude); toast('Picker updated'); }, err=> alert('GPS error: '+err.message), { enableHighAccuracy:true });
 }
 function testAnnouncement(){ const msg=(document.getElementById('locMsg').value||'Test announcement').trim(); speak(msg); }
-function saveLocation(){
-  const name=(document.getElementById('locName').value||'').trim(); const lat=parseFloat(document.getElementById('locLat').value); const lng=parseFloat(document.getElementById('locLng').value); const radius=parseInt(document.getElementById('locRadius').value||500,10); const msg=(document.getElementById('locMsg').value||'').trim();
+
+async function saveLocation(){
+  const name=(document.getElementById('locName').value||'').trim();
+  const lat=parseFloat(document.getElementById('locLat').value);
+  const lng=parseFloat(document.getElementById('locLng').value);
+  const radius=parseInt(document.getElementById('locRadius').value||500,10);
+  const msg=(document.getElementById('locMsg').value||'').trim();
   const audioFile=document.getElementById('locAudio').files[0]||null;
   if(!name || isNaN(lat) || isNaN(lng)) return alert('Provide name, lat and lng');
   if(radius<=0) return alert('Radius > 0 required');
-  const s = LS.get(K.SESSION, null); const companyId = (s && s.user!=='bhagyesh') ? s.companyId : LS.get(K.COMPANIES,[])[0]?.id || null;
-
-  if(audioFile){
-    const reader=new FileReader();
-    reader.onload=function(e){
-      pushLoc(e.target.result);
-    };
-    reader.readAsDataURL(audioFile);
-  } else {
-    pushLoc(null);
-  }
-
-  function pushLoc(audioData){
-    const locs = LS.get(K.LOCS,[]);
-    locs.push({ id: uid('loc'), name, lat, lng, radius, msg, audio:audioData, companyId, createdAt:new Date().toISOString() }); LS.set(K.LOCS, locs);
+  const s = getSessionLocally(); const companyId = (s && s.user!=='bhagyesh') ? s.company_id : (await db_select('companies'))[0]?.id || null;
+  try{
+    let audioUrl = null;
+    if(audioFile){
+      audioUrl = await uploadAudioFile(audioFile, 'location_audio');
+    }
+    const record = { id: uid('loc'), name, lat, lng, radius, msg, audio_url: audioUrl, company_id: companyId, created_at: new Date().toISOString() };
+    await db_insert('locations', [record]);
+    // clear form
     document.getElementById('locName').value=''; document.getElementById('locLat').value=''; document.getElementById('locLng').value=''; document.getElementById('locMsg').value=''; document.getElementById('locAudio').value='';
     if(locMarker){ try{ locMap.removeLayer(locMarker); }catch(e){} locMarker=null; } if(locCircle){ try{ locMap.removeLayer(locCircle);}catch(e){} locCircle=null; }
-    renderLocationList(); renderAvailList(); toast('Location saved');
-  }
+    await renderLocationList(); await renderAvailList(); toast('Location saved');
+  }catch(e){ console.error('saveLocation fail', e); alert('Save failed'); }
 }
-function renderLocationList(){
-  const wrap=document.getElementById('locationList'); wrap.innerHTML='';
-  const s = LS.get(K.SESSION, null); const locs = LS.get(K.LOCS,[]); const visible = (!s || s.user==='bhagyesh') ? locs : locs.filter(l=>l.companyId===s.companyId);
+
+async function renderLocationList(){
+  const wrap=document.getElementById('locationList'); wrap.innerHTML=''; // clear before render (fix duplicates)
+  const s = getSessionLocally(); const locs = await db_select('locations');
+  const comps = await db_select('companies'); const compMap = {}; comps.forEach(c=>compMap[c.id]=c);
+  const visible = (!s || s.user==='bhagyesh') ? locs : locs.filter(l=>l.company_id===s.company_id);
   if(visible.length===0){ wrap.innerHTML='<div class="text-sm text-slate-400">No locations yet.</div>'; return; }
   visible.forEach(l=>{
     const row=document.createElement('div'); row.className='list-row flex items-start justify-between';
-    row.innerHTML = `<div class="flex-1"><div class="font-semibold">${l.name}</div><div class="text-xs text-slate-500">Lat: ${l.lat.toFixed(6)} · Lng: ${l.lng.toFixed(6)} · R: ${l.radius}m</div>${l.msg?`<div class="text-xs text-slate-600 mt-1">Msg: ${l.msg}</div>`:''}${l.audio?`<div class="text-xs text-slate-600 mt-1">Audio: attached</div>`:''}</div>
+    const company = compMap[l.company_id] || null;
+    const companyHtml = company && company.logo ? `<img src="${company.logo}" class="logo-small mr-2" onerror="this.style.display='none'">` : '';
+    const audioHtml = l.audio_url ? `<div class="text-xs text-slate-600 mt-1">Audio: <a href="${l.audio_url}" target="_blank" class="underline">Listen</a> · <button class="bg-gray-100 px-2 py-1 rounded ml-2" onclick="playUrl('${encodeURIComponent(l.audio_url)}')">Play</button></div>` : '';
+    row.innerHTML = `<div class="flex-1">${companyHtml}<div class="font-semibold">${l.name}</div><div class="text-xs text-slate-500">Lat: ${Number(l.lat).toFixed(6)} · Lng: ${Number(l.lng).toFixed(6)} · R: ${l.radius}m</div>${l.msg?`<div class="text-xs text-slate-600 mt-1">Msg: ${l.msg}</div>`:''}${audioHtml}</div>
       <div class="flex flex-col gap-2 ml-3">
         <button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="editLocation('${l.id}')">Edit</button>
         <button class="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700" onclick="deleteLocation('${l.id}')">Delete</button>
@@ -656,56 +782,81 @@ function renderLocationList(){
     wrap.appendChild(row);
   });
 }
-function editLocation(id){ const locs=LS.get(K.LOCS,[]); const l=locs.find(x=>x.id===id); if(!l) return; document.getElementById('locName').value=l.name; document.getElementById('locLat').value=l.lat; document.getElementById('locLng').value=l.lng; document.getElementById('locRadius').value=l.radius; document.getElementById('locMsg').value=l.msg||''; setPicker(l.lat,l.lng); locs.splice(locs.findIndex(x=>x.id===id),1); LS.set(K.LOCS, locs); renderLocationList(); renderAvailList(); }
-function deleteLocation(id){ if(!confirm('Delete location?')) return; LS.set(K.LOCS, LS.get(K.LOCS,[]).filter(x=>x.id!==id)); renderLocationList(); renderAvailList(); }
 
-/* =========================
-   TRIPS (fixed)
-   ========================= */
+
+
+/* helper to play a signed URL safely (decode and play) */
+function playUrl(encodedUrl){
+  try{
+    const url = decodeURIComponent(encodedUrl);
+    const a = new Audio(url);
+    a.play().catch(e=>{ console.warn('Play failed', e); alert('Could not play audio'); });
+  }catch(e){ console.warn('playUrl err', e); }
+}
+
+async function editLocation(id){
+  const locs=await db_select('locations'); const l=locs.find(x=>x.id===id); if(!l) return;
+  document.getElementById('locName').value=l.name; document.getElementById('locLat').value=l.lat; document.getElementById('locLng').value=l.lng; document.getElementById('locRadius').value=l.radius; document.getElementById('locMsg').value=l.msg||''; setPicker(l.lat,l.lng);
+  // remove location record (we'll re-save on Save)
+  await db_delete('locations', { id });
+  await renderLocationList(); await renderAvailList();
+}
+async function deleteLocation(id){
+  if(!confirm('Delete location?')) return;
+  try{ await db_delete('locations', { id }); await renderLocationList(); await renderAvailList(); toast('Location deleted'); }catch(e){ console.error('deleteLocation', e); alert('Delete failed'); }
+}
+
+/* Trips */
 let planned = [], plannedSelIdx = null;
-function renderAvailList(){
+async function renderAvailList(){
   const wrap = document.getElementById('availList'); wrap.innerHTML='';
-  const s = LS.get(K.SESSION, null);
-  const locsAll = LS.get(K.LOCS,[]);
-  const visible = (!s || s.user==='bhagyesh') ? locsAll : locsAll.filter(l=>l.companyId===s.companyId);
+  const s = getSessionLocally();
+  const locsAll = await db_select('locations');
+  const visible = (!s || s.user==='bhagyesh') ? locsAll : locsAll.filter(l=>l.company_id===s.company_id);
   if(visible.length===0){ wrap.innerHTML = '<div class="text-sm text-slate-400">No locations available.</div>'; return; }
   visible.forEach(l=>{
     const el = document.createElement('div'); el.className='p-2 rounded hover:bg-slate-50 flex items-center justify-between';
-    el.innerHTML = `<div><div class="font-medium">${l.name}</div><div class="text-xs text-slate-500">${l.lat.toFixed(4)}, ${l.lng.toFixed(4)}</div></div><div><button class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded" onclick="planAdd('${l.id}')">Add</button></div>`;
+    el.innerHTML = `<div><div class="font-medium">${l.name}</div><div class="text-xs text-slate-500">${Number(l.lat).toFixed(4)}, ${Number(l.lng).toFixed(4)}</div></div><div><button class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded" onclick="planAddFromButton('${l.id}')">Add</button></div>`;
     wrap.appendChild(el);
   });
 }
-function planAdd(locId){ const loc = LS.get(K.LOCS,[]).find(x=>x.id===locId); if(!loc) return; planned.push({ id: loc.id, name: loc.name, lat: loc.lat, lng: loc.lng, radius: loc.radius, msg: loc.msg||'', audio: loc.audio||null }); renderPlanned(); }
+async function planAddFromButton(locId){
+  const loc = (await db_select('locations')).find(x=>x.id===locId);
+  if(!loc) return;
+  planned.push({ id: loc.id, name: loc.name, lat: loc.lat, lng: loc.lng, radius: loc.radius, msg: loc.msg||'', audio_url: loc.audio_url||null });
+  renderPlanned();
+}
 function renderPlanned(){ const wrap=document.getElementById('plannedList'); wrap.innerHTML=''; if(planned.length===0){ wrap.innerHTML='<div class="text-sm text-slate-400">No planned stops</div>'; return; } planned.forEach((p,i)=>{ const el=document.createElement('div'); el.className='p-2 rounded hover:bg-slate-50 flex items-center justify-between'; el.innerHTML=`<div><div class="font-medium">${i+1}. ${p.name}</div><div class="text-xs text-slate-500">R ${p.radius}m</div></div><div class="flex gap-2"><button class="bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded" onclick="plannedSelect(${i})">Select</button></div>`; if(i===plannedSelIdx) el.classList.add('ring','ring-blue-300'); wrap.appendChild(el); }); }
 function plannedSelect(i){ plannedSelIdx = (plannedSelIdx===i? null : i); renderPlanned(); }
-function addPlanned(){ toast('Use Add on Available Locations'); }
 function removePlanned(){ if(plannedSelIdx===null) return alert('Select planned stop'); planned.splice(plannedSelIdx,1); plannedSelIdx=null; renderPlanned(); }
 function movePlanned(dir){ if(plannedSelIdx===null) return alert('Select planned stop'); const i=plannedSelIdx, j=i+dir; if(j<0||j>=planned.length) return; [planned[i],planned[j]]=[planned[j],planned[i]]; plannedSelIdx=j; renderPlanned(); }
 function clearPlanned(){ if(!confirm('Clear planned stops?')) return; planned=[]; plannedSelIdx=null; renderPlanned(); }
-function saveTrip(){ const name=(document.getElementById('tripName').value||'').trim(); if(!name) return alert('Trip name required'); if(planned.length<2) return alert('Select at least 2 stops'); const s=LS.get(K.SESSION,null); const companyId = (!s || s.user==='bhagyesh') ? null : s.companyId; const trips=LS.get(K.TRIPS,[]); trips.push({ id: uid('trip'), name, locs: planned.map(x=>({...x})), companyId, createdAt:new Date().toISOString() }); LS.set(K.TRIPS,trips); planned=[]; plannedSelIdx=null; document.getElementById('tripName').value=''; renderPlanned(); renderTripList(); renderStartSelect(); toast('Trip saved'); }
-function renderTripList(){ const wrap=document.getElementById('tripList'); wrap.innerHTML=''; const s=LS.get(K.SESSION,null); const trips=LS.get(K.TRIPS,[]); const visible = (!s||s.user==='bhagyesh') ? trips : trips.filter(t=>t.companyId===s.companyId); if(visible.length===0){ wrap.innerHTML='<div class="text-sm text-slate-400">No trips</div>'; return; } visible.forEach(t=>{ const row=document.createElement('div'); row.className='list-row flex items-center justify-between'; row.innerHTML=`<div><div class="font-semibold">${t.name}</div><div class="text-xs text-slate-500">${t.locs.map(x=>x.name).join(' → ')}</div></div><div class="flex gap-2"><button class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded" onclick="startTripById('${t.id}')">Start</button><button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="editTrip('${t.id}')">Edit</button><button class="bg-red-600 px-3 py-1 rounded text-white hover:bg-red-700" onclick="deleteTrip('${t.id}')">Delete</button></div>`; wrap.appendChild(row); }); }
-function editTrip(id){ const trips=LS.get(K.TRIPS,[]); const t=trips.find(x=>x.id===id); if(!t) return; document.getElementById('tripName').value=t.name; planned = t.locs.map(x=>({...x})); renderPlanned(); trips.splice(trips.findIndex(x=>x.id===id),1); LS.set(K.TRIPS,trips); renderTripList(); go('pageTripSetup'); }
-function deleteTrip(id){ if(!confirm('Delete trip?')) return; LS.set(K.TRIPS, LS.get(K.TRIPS,[]).filter(t=>t.id!==id)); renderTripList(); renderStartSelect(); }
+async function saveTrip(){ const name=(document.getElementById('tripName').value||'').trim(); if(!name) return alert('Trip name required'); if(planned.length<2) return alert('Select at least 2 stops'); const s=getSessionLocally(); const companyId = (!s || s.user==='bhagyesh') ? null : s.company_id; try{ await db_insert('trips', [{ id: uid('trip'), name, locs: planned.map(x=>({...x})), company_id: companyId, created_at: new Date().toISOString() }]); planned=[]; plannedSelIdx=null; document.getElementById('tripName').value=''; renderPlanned(); renderTripList(); renderStartSelect(); toast('Trip saved'); }catch(e){ console.error('saveTrip', e); alert('Failed to save trip'); } }
+async function renderTripList(){
+  const wrap=document.getElementById('tripList'); wrap.innerHTML=''; const s=getSessionLocally(); const trips=await db_select('trips'); const visible = (!s||s.user==='bhagyesh') ? trips : trips.filter(t=>t.company_id===s.company_id);
+  if(visible.length===0){ wrap.innerHTML='<div class="text-sm text-slate-400">No trips</div>'; return; }
+  visible.forEach(t=>{ const row=document.createElement('div'); row.className='list-row flex items-center justify-between'; row.innerHTML=`<div><div class="font-semibold">${t.name}</div><div class="text-xs text-slate-500">${(t.locs||[]).map(x=>x.name).join(' → ')}</div></div><div class="flex gap-2"><button class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded" onclick="startTripById('${t.id}')">Start</button><button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="editTrip('${t.id}')">Edit</button><button class="bg-red-600 px-3 py-1 rounded text-white hover:bg-red-700" onclick="deleteTrip('${t.id}')">Delete</button></div>`; wrap.appendChild(row); });
+}
+async function editTrip(id){ const trips=await db_select('trips'); const t=trips.find(x=>x.id===id); if(!t) return; document.getElementById('tripName').value=t.name; planned = (t.locs||[]).map(x=>({...x})); renderPlanned(); await db_delete('trips', { id }); renderTripList(); go('pageTripSetup'); }
+async function deleteTrip(id){ if(!confirm('Delete trip?')) return; await db_delete('trips', { id }); renderTripList(); renderStartSelect(); }
 
-/* =========================
-   START TRIP & ONGOING LOGIC (FIXES applied)
-   ========================= */
-function renderStartSelect(){
+/* START TRIP */
+let runMap=null, runMarkers=[], runCircles=[], runPolyline=null;
+let watchId = null, autoRefreshIntervalId = null;
+let runtime = { active: null, lastPos: null, ttsVolume: 1 };
+
+async function renderStartSelect(){
   const sel = document.getElementById('startTripSelect'); sel.innerHTML='';
-  const s=LS.get(K.SESSION,null);
-  const trips=LS.get(K.TRIPS,[]); const visible = (!s||s.user==='bhagyesh') ? trips : trips.filter(t=>t.companyId===s.companyId);
+  const s=getSessionLocally();
+  const trips=await db_select('trips'); const visible = (!s||s.user==='bhagyesh') ? trips : trips.filter(t=>t.company_id===s.company_id);
   visible.forEach(t=>{ const o=document.createElement('option'); o.value=t.id; o.textContent=t.name; sel.appendChild(o); });
 }
-
 function startSelectedTrip(){ const id=document.getElementById('startTripSelect').value; if(!id) return alert('Select trip'); startTripById(id); }
+async function startTripById(id){
+  const trips = await db_select('trips'); const t = trips.find(x=>x.id===id); if(!t) return alert('Trip not found');
+  runtime.active = { tripId:t.id, name:t.name, locs: JSON.parse(JSON.stringify(t.locs||[])), startedAt: new Date().toISOString(), reached: [], idx: 0, meMarker: null, _prevPos: null };
+  document.getElementById('ongoingTripName').textContent = runtime.active.name; document.getElementById('ongoingStart').textContent = fmtISO(runtime.active.startedAt);
 
-function startTripById(id){
-  const trips = LS.get(K.TRIPS,[]); const t = trips.find(x=>x.id===id); if(!t) return alert('Trip not found');
-  runtime.active = { tripId:t.id, name:t.name, locs: JSON.parse(JSON.stringify(t.locs)), startedAt: new Date().toISOString(), reached: [], idx: 0, meMarker: null, _prevPos: null };
-  document.getElementById('ongoingTripName').textContent = runtime.active.name;
-  document.getElementById('ongoingStart').textContent = fmtISO(runtime.active.startedAt);
-
-  // Map & markers
   if(!runMap) initRunMap();
   runMarkers.forEach(m=>{ try{ runMap.removeLayer(m);}catch(e){} }); runCircles.forEach(c=>{ try{ runMap.removeLayer(c);}catch(e){} }); runMarkers=[]; runCircles=[];
   if(runPolyline){ try{ runMap.removeLayer(runPolyline);}catch(e){} runPolyline=null; }
@@ -713,22 +864,18 @@ function startTripById(id){
   const latlngs = runtime.active.locs.map(l=>[l.lat,l.lng]);
   runPolyline = L.polyline(latlngs, { color:'#2563eb', weight:4 }).addTo(runMap);
   runtime.active.locs.forEach((l,idx)=>{ const m = L.marker([l.lat,l.lng]).addTo(runMap).bindPopup(`${idx+1}. ${l.name}`); runMarkers.push(m); const c = L.circle([l.lat,l.lng], { radius:Number(l.radius||500), fillOpacity:0.06, color:'#2563eb' }).addTo(runMap); runCircles.push(c); });
-
   try{ runMap.fitBounds(runPolyline.getBounds(), { padding:[20,20] }); }catch(e){}
-  // show ongoing panel
-  document.getElementById('startPanel').classList.add('hidden');
-  document.getElementById('ongoingPanel').classList.remove('hidden');
+  document.getElementById('startPanel').classList.add('hidden'); document.getElementById('ongoingPanel').classList.remove('hidden');
 
-  // reset any previous state on locs: _enterCount / _arrived
+  // ensure map layout recalculates (fix laptop/tablet rendering)
+  setTimeout(()=>{ try{ runMap.invalidateSize(); }catch(e){} }, 300);
+
   runtime.active.locs.forEach(l=>{ l._enterCount=0; l._arrived=false; });
-
-  // start GPS watch
   if(watchId!==null){ try{ navigator.geolocation.clearWatch(watchId);}catch(e){} watchId=null; }
   if(navigator.geolocation) watchId = navigator.geolocation.watchPosition(onGPS, gpsError, { enableHighAccuracy:true, maximumAge:2000 });
   startPeriodicRefreshImmediate();
   updateProgressUI();
 }
-
 function initRunMap(){ if(runMap){ try{ runMap.invalidateSize(); }catch(e){} return; } runMap = L.map('runMap'); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution:'© OpenStreetMap' }).addTo(runMap); runMap.setView([21.6417,69.6293], 12); }
 function createBusIcon(){ const svg = encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' width='36' height='36'><rect x='6' y='12' width='52' height='36' rx='6' fill='#0ea5e9' stroke='#0369a1' stroke-width='2'/><circle cx='20' cy='52' r='4' fill='#0b1220'/><circle cx='44' cy='52' r='4' fill='#0b1220'/><rect x='16' y='20' width='8' height='12' fill='#fff'/><rect x='40' y='20' width='8' height='12' fill='#fff'/></svg>`); return L.divIcon({ html:`<img src="data:image/svg+xml;charset=utf-8,${svg}" style="width:36px;height:36px;"/>`, className:'', iconSize:[36,36], iconAnchor:[18,18] }); }
 
@@ -742,8 +889,6 @@ function onGPS(pos){
   document.getElementById('curLat').textContent = lat.toFixed(6);
   document.getElementById('curLng').textContent = lng.toFixed(6);
   document.getElementById('curSpeed').textContent = sp ? (sp*3.6).toFixed(1) + ' km/h' : '—';
-
-  // update upcoming & check for arrival
   updateUpcomingAndCheck(lat,lng,sp);
 }
 function gpsError(err){ console.warn('GPS error', err); }
@@ -751,83 +896,59 @@ function gpsError(err){ console.warn('GPS error', err); }
 function updateUpcomingAndCheck(lat,lng,speedMs){
   const trip = runtime.active; if(!trip) return;
   if(trip.idx >= trip.locs.length) return;
-
-  // Dynamic path correction: detect if we're significantly closer to a later stop than the current next stop
   try{
-    let nearestIdx = trip.idx;
-    let nearestDist = Infinity;
-    for(let i=trip.idx;i<trip.locs.length;i++){
-      const d = haversine(lat,lng,trip.locs[i].lat,trip.locs[i].lng);
-      if(d < nearestDist){ nearestDist = d; nearestIdx = i; }
-    }
-    // if nearest is ahead by more than a threshold (e.g., 200m) and not current, correct
+    let nearestIdx = trip.idx; let nearestDist = Infinity;
+    for(let i=trip.idx;i<trip.locs.length;i++){ const d = haversine(lat,lng,trip.locs[i].lat,trip.locs[i].lng); if(d < nearestDist){ nearestDist = d; nearestIdx = i; } }
     if(nearestIdx !== trip.idx && nearestDist + 50 < haversine(lat,lng,trip.locs[trip.idx].lat,trip.locs[trip.idx].lng)){
-      console.warn('Detected deviation, correcting index from', trip.idx, 'to', nearestIdx);
       toast('Route auto-corrected to: ' + trip.locs[nearestIdx].name, 3000);
       trip.idx = nearestIdx;
     }
   }catch(e){ console.warn('Path-correct error', e); }
 
   const next = trip.locs[trip.idx];
-  const d = haversine(lat,lng,next.lat,next.lng); // meters
+  const d = haversine(lat,lng,next.lat,next.lng);
   document.getElementById('upcomingName').textContent = next.name;
   document.getElementById('distNext').textContent = d>=1000 ? (d/1000).toFixed(2)+' km' : Math.round(d)+' m';
 
-  // ETA calculation (fallback to estimate if speed missing)
   let sp = speedMs;
   if(!sp && trip._lastPos && trip._lastPosTime){
-    const dt = (Date.now() - trip._lastPosTime)/1000; // s
-    if(dt>0){
-      const dMoved = haversine(trip._lastPos.lat, trip._lastPos.lng, lat, lng);
-      sp = dMoved / dt; // m/s
-    }
+    const dt = (Date.now() - trip._lastPosTime)/1000;
+    if(dt>0){ const dMoved = haversine(trip._lastPos.lat, trip._lastPos.lng, lat, lng); sp = dMoved / dt; }
   }
   trip._lastPos = { lat,lng }; trip._lastPosTime = Date.now();
-  let etaText = '—';
-  const spUse = sp || 8.33; // fallback 30 km/h
+  let etaText = '—'; const spUse = sp || 8.33;
   if(spUse > 0.1){ const sec = d / spUse; const min = Math.round(sec/60); etaText = (min<=1) ? '~1 min' : `~${min} min`; }
   document.getElementById('etaNext').textContent = etaText;
 
-  // draw dotted line to next
   if(trip._nextLine){ try{ runMap.removeLayer(trip._nextLine); }catch(e){} trip._nextLine=null; }
   trip._nextLine = L.polyline([[lat,lng],[next.lat,next.lng]], { color:'blue', dashArray:'6' }).addTo(runMap);
 
   const preRadius = Math.max(100, next.radius);
   const arrRadius = Math.max(50, Math.round(next.radius / 2));
+  if(!next._enterCount) next._enterCount = 0; if(!next._arrived) next._arrived = false;
 
-  if(!next._enterCount) next._enterCount = 0;
-  if(!next._arrived) next._arrived = false;
-
-  // Announce custom message (up to 3x) while within preRadius
-  if(!next._arrived && d <= preRadius && next._enterCount < 3){
-    next._enterCount++;
-    // prefer audio if present
+//   if(!next._arrived && d <= preRadius && next._enterCount < 3){
+//     next._enterCount++;
+//     playAnnouncement(next);
+  if(!next._arrived && d <= preRadius && next._enterCount < 1){
+    next._enterCount = 1;
     playAnnouncement(next);
+
   }
 
-  // Arrival: mark arrived, increment idx, update progress
   if(!next._arrived && d <= arrRadius){
     next._arrived = true;
     trip.reached.push({ name: next.name, time: new Date().toISOString() });
-
-    // Update marker/circle visuals for this stop
     try{ if(runMarkers[trip.idx]) runMarkers[trip.idx].setIcon(L.icon({ iconUrl:'https://cdn-icons-png.flaticon.com/512/190/190411.png', iconSize:[28,28] })); }catch(e){}
     try{ if(runCircles[trip.idx]) runCircles[trip.idx].setStyle({ color:'#16a34a' }); }catch(e){}
-
-    // announce arrival (use same message or distinct)
     playAnnouncement(next);
-
-    // increment to next
     trip.idx++;
     updateProgressUI();
-
-    // if completed all stops, finalize
     if(trip.idx >= trip.locs.length){
       speak('Destination reached. Trip complete.');
       setTimeout(()=> finishAndSaveRun(), 1200);
       return;
     } else {
-      // set upcoming to next stop name immediately for UI
       document.getElementById('upcomingName').textContent = trip.locs[trip.idx].name;
     }
   }
@@ -841,36 +962,30 @@ function updateProgressUI(){
   document.getElementById('progressBar').style.width = pct + '%';
 }
 
-function finishAndSaveRun(){
+async function finishAndSaveRun(){
   if(!runtime.active) return;
   const endedAt = new Date().toISOString();
   const durationMin = Math.round((new Date(endedAt) - new Date(runtime.active.startedAt))/60000);
-  const run = { tripName: runtime.active.name, startedAt: runtime.active.startedAt, endedAt, durationMin, reached: runtime.active.reached };
-  const runs = LS.get(K.RUNS,[]); runs.push(run); LS.set(K.RUNS, runs);
-  toast('Run saved');
-  setTimeout(()=> endTrip(), 800);
+  const run = { id: uid('run'), trip_name: runtime.active.name, started_at: runtime.active.startedAt, ended_at: endedAt, duration_min: durationMin, reached: runtime.active.reached };
+  try{ await db_insert('runs', [run]); toast('Run saved'); setTimeout(()=> endTrip(), 800); }catch(e){ console.error('finish save run', e); endTrip(); }
 }
 
 function manualAnn(){ if(!runtime.active) return; const idx = Math.max(0, Math.min(runtime.active.idx, runtime.active.locs.length-1)); const next = runtime.active.locs[idx]; playAnnouncement(next); }
 
-function endTrip(){
+async function endTrip(){
   if(!runtime.active) return;
   const endedAt = new Date().toISOString();
   const durationMin = Math.round((new Date(endedAt) - new Date(runtime.active.startedAt))/60000);
-  const run = { tripName: runtime.active.name, startedAt: runtime.active.startedAt, endedAt, durationMin, reached: runtime.active.reached };
-  const runs = LS.get(K.RUNS,[]); runs.push(run); LS.set(K.RUNS, runs);
-
+  const run = { id: uid('run'), trip_name: runtime.active.name, started_at: runtime.active.startedAt, ended_at: endedAt, duration_min: durationMin, reached: runtime.active.reached };
+  try{ await db_insert('runs', [run]); }catch(e){ console.warn('endTrip insert', e); }
   if(watchId!==null){ navigator.geolocation.clearWatch(watchId); watchId=null; }
   if(autoRefreshIntervalId!==null){ clearInterval(autoRefreshIntervalId); autoRefreshIntervalId=null; }
   if(runtime.active && runtime.active.meMarker){ try{ runMap.removeLayer(runtime.active.meMarker); }catch(e){} }
   runtime.active = null;
-
   document.getElementById('ongoingPanel').classList.add('hidden');
   document.getElementById('startPanel').classList.remove('hidden');
   toast('Trip ended and saved to reports');
-  renderReports();
-  renderTripList();
-  renderStartSelect();
+  await renderReports(); await renderTripList(); await renderStartSelect();
 }
 
 /* center map and gps helpers */
@@ -884,8 +999,8 @@ function speak(text){ try{ const u = new SpeechSynthesisUtterance(text); u.volum
 function playAnnouncement(loc){
   if(!loc) return;
   try{
-    if(loc.audio){
-      const a = new Audio(loc.audio);
+    if(loc.audio_url){
+      const a = new Audio(loc.audio_url);
       a.volume = Number(runtime.ttsVolume || 1.0);
       a.play().catch(e=>{ console.warn('Audio play failed, falling back to TTS', e); if(loc.msg) speak(loc.msg); });
     } else if(loc.msg && loc.msg.trim()){
@@ -896,9 +1011,7 @@ function playAnnouncement(loc){
   }catch(e){ console.warn('playAnnouncement error', e); }
 }
 
-/* =========================
-   Periodic refresh
-   ========================= */
+/* Periodic refresh */
 function startPeriodicRefreshImmediate(){
   if(autoRefreshIntervalId) clearInterval(autoRefreshIntervalId);
   if(navigator.geolocation){ navigator.geolocation.getCurrentPosition(p=> onGPS(p), ()=>{}); }
@@ -913,41 +1026,88 @@ function setAutoRefreshInterval(){
   toast('Auto refresh ' + secs + 's');
 }
 
-/* =========================
-   Reports & exports
-   ========================= */
-function renderReports(){
+/* Reports & exports */
+async function renderReports(){
   const ul = document.getElementById('reportTrips'); ul.innerHTML='';
-  const runs = LS.get(K.RUNS,[]);
+  const runs = await db_select('runs');
   if(runs.length===0) ul.innerHTML = '<div class="text-sm text-slate-400">No trip reports yet.</div>';
   runs.slice().reverse().forEach(r=>{
     const div=document.createElement('div'); div.className='list-row';
-    div.innerHTML = `<div class="font-semibold">${r.tripName}</div><div class="text-xs text-slate-500">Start: ${fmtISO(r.startedAt)} | End: ${fmtISO(r.endedAt)} | Duration: ${r.durationMin} min</div><div class="text-xs text-slate-600 mt-1">Stops: ${r.reached.map(s=>s.name+' ('+fmtISO(s.time)+')').join(', ') || '—'}</div>`;
+    div.innerHTML = `<div class="font-semibold">${r.trip_name}</div><div class="text-xs text-slate-500">Start: ${fmtISO(r.started_at)} | End: ${fmtISO(r.ended_at)} | Duration: ${r.duration_min} min</div><div class="text-xs text-slate-600 mt-1">Stops: ${(r.reached||[]).map(s=>s.name+' ('+fmtISO(s.time)+')').join(', ') || '—'}</div>`;
     ul.appendChild(div);
   });
-  const logs = LS.get(K.LOGINS,[]); const ul2 = document.getElementById('reportLogins'); ul2.innerHTML='';
+  const logs = await db_select('logins'); const ul2 = document.getElementById('reportLogins'); ul2.innerHTML='';
   if(logs.length===0) ul2.innerHTML = '<div class="text-sm text-slate-400">No login activity</div>';
   logs.slice().reverse().forEach(l=>{ const li=document.createElement('div'); li.className='list-row'; li.innerHTML = `<div class="font-medium">${l.user}</div><div class="text-xs text-slate-500">${l.role} · ${fmtISO(l.time)} · ${l.device}</div>`; ul2.appendChild(li); });
 }
-function exportTripsExcel(){ const runs = LS.get(K.RUNS,[]); const rows = []; runs.forEach(r=>{ rows.push({ Trip: r.tripName, StartedAt: r.startedAt, EndedAt: r.endedAt, DurationMin: r.durationMin }); r.reached.forEach(s=> rows.push({ Trip: r.tripName, StopReached: s.name, ReachedAt: s.time })); }); const ws = XLSX.utils.json_to_sheet(rows); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'TripReports'); XLSX.writeFile(wb, 'trip_reports.xlsx'); }
-function exportLoginsExcel(){ const logs = LS.get(K.LOGINS,[]); const ws = XLSX.utils.json_to_sheet(logs); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'LoginLogs'); XLSX.writeFile(wb, 'login_logs.xlsx'); }
+async function exportTripsExcel(){ const runs = await db_select('runs'); const rows = []; runs.forEach(r=>{ rows.push({ Trip: r.trip_name, StartedAt: r.started_at, EndedAt: r.ended_at, DurationMin: r.duration_min }); (r.reached||[]).forEach(s=> rows.push({ Trip: r.trip_name, StopReached: s.name, ReachedAt: s.time })); }); const ws = XLSX.utils.json_to_sheet(rows); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'TripReports'); XLSX.writeFile(wb, 'trip_reports.xlsx'); }
+async function exportLoginsExcel(){ const logs = await db_select('logins'); const ws = XLSX.utils.json_to_sheet(logs); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'LoginLogs'); XLSX.writeFile(wb, 'login_logs.xlsx'); }
 
-/* =========================
-   Small helpers & boot
-   ========================= */
+/* Help */
 function showHelp(){ alert('BusMate prototype — Master: bhagyesh/bhagyesh; Admin: admin/admin; Operator: operator/operator. Serve via static server for geolocation.'); }
 
 /* Boot */
-(function boot(){
-  const s = LS.get(K.SESSION, null);
-  if(s){ document.getElementById('logoutBtn').classList.remove('hidden'); document.getElementById('userLabel').textContent = s.displayName || s.user; document.getElementById('roleLabel').textContent = s.role; applyHeader(); go('pageHome'); } else { go('pageLogin'); }
-  // initial renders
-  renderCompanyList(); renderUserList(); renderLocationList(); renderAvailList(); renderTripList(); renderStartSelect(); renderReports();
+(async function boot(){
+  await seedDemoIfEmpty();
+  const s = getSessionLocally();
+  if(s){ document.getElementById('logoutBtn').classList.remove('hidden'); document.getElementById('userLabel').textContent = s.display_name || s.user; document.getElementById('roleLabel').textContent = s.role; await applyHeader(); go('pageHome'); } else { go('pageLogin'); }
+  await renderCompanyList(); await renderUserList(); await renderLocationList(); await renderAvailList(); await renderTripList(); await renderStartSelect(); await renderReports();
 })();
 
-/* Expose debug object */
-window._bm = { LS, K, runtime };
+/* expose debug and functions for inline onclick */
+window._bm = { sb, db_select, db_insert, db_update, db_delete, runtime };
+
+window.handleLogin = handleLogin;
+window.showHelp = showHelp;
+window.logout = logout;
+window.go = go;
+
+window.openCompanyForm = openCompanyForm;
+window.closeCompanyModal = closeCompanyModal;
+window.saveCompany = saveCompany;
+window.editCompany = editCompany;
+window.toggleCompany = toggleCompany;
+window.deleteCompany = deleteCompany;
+
+window.openUserForm = openUserForm;
+window.closeUserModal = closeUserModal;
+window.saveUser = saveUser;
+window.editUser = editUser;
+window.toggleUser = toggleUser;
+window.deleteUser = deleteUser;
+
+window.useCurrentGPS = useCurrentGPS;
+window.testAnnouncement = testAnnouncement;
+window.saveLocation = saveLocation;
+window.editLocation = editLocation;
+window.deleteLocation = deleteLocation;
+
+window.planAddFromButton = planAddFromButton;
+window.plannedSelect = plannedSelect;
+window.removePlanned = removePlanned;
+window.movePlanned = movePlanned;
+window.clearPlanned = clearPlanned;
+window.saveTrip = saveTrip;
+window.editTrip = editTrip;
+window.deleteTrip = deleteTrip;
+
+window.startSelectedTrip = startSelectedTrip;
+window.startTripById = startTripById;
+window.manualAnn = manualAnn;
+window.endTrip = endTrip;
+window.centerMap = centerMap;
+window.centerCurrentGPS = centerCurrentGPS;
+window.setVolume = setVolume;
+
+window.exportTripsExcel = exportTripsExcel;
+window.exportLoginsExcel = exportLoginsExcel;
+
+window.openPasswordForm = openPasswordForm;
+window.closePasswordModal = closePasswordModal;
+window.savePassword = savePassword;
+window.playUrl = playUrl;
 
 </script>
+
 </body>
 </html>
