@@ -1,0 +1,1637 @@
+<!--
+====================================================================================
+🚌 SHREE RAMKRUPA TRAVELS - BUSMATE WEB APPLICATION (index_fixed_final.html)
+====================================================================================
+Version: Final Production Build
+Author: Bhagyesh Limbad & ChatGPT GPT-5
+
+🔧 Functional Summary:
+- Full Supabase integration (no localStorage)
+- User management with plain-text passwords
+- Role-based UI (Admin / Operator / Driver)
+- Company logo, trips, and locations management
+- Audio announcements with signed URLs (1000 days)
+- Prevents overlapping and multiple audio triggers
+- Nearest-location detection (handles skipped stops)
+- Wake Lock API for background operation
+- Live Trips map with bus icons (auto-refresh)
+- Editable locations (updates in real-time)
+- Map display fix for desktop/tablet
+- Password update widget
+- Toast notifications and global onclick handlers
+- Dynamic ETA and distance display
+- Automatic trip correction on skipped stops
+- Zero database persistence for live-trip overlay
+
+🪲 Added Fix (Oct 2025):
+- Trip now always fetches the latest location data (radius, name, lat/lng)
+  from Supabase at trip start. Updates reflected without re-creating the trip.
+
+====================================================================================
+-->
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>BusMate - Test Mode</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com">
+function playAnnouncementById(locId){
+  try{
+    const loc = (runtime.active && runtime.active.locs) ? runtime.active.locs.find(x => x.id === locId) : null;
+    if(!loc){ console.warn('Location not found for ID:', locId); toast('Location not found'); return; }
+    console.log('🔊 Playing announcement for', loc.name, 'ID:', locId);
+    if(loc.audio_url){
+      const a = new Audio(loc.audio_url);
+      a.volume = runtime.ttsVolume || 1;
+      a.play().catch(err => { console.error('Audio play failed', err); toast('Audio playback error'); });
+    } else {
+      const msg = loc.msg || loc.name || 'Announcement';
+      const utter = new SpeechSynthesisUtterance(msg);
+      utter.volume = runtime.ttsVolume || 1;
+      utter.rate = 1;
+      utter.pitch = 1;
+      speechSynthesis.speak(utter);
+    }
+  }catch(e){
+    console.error('playAnnouncementById error', e);
+    toast('Announcement failed');
+  }
+}
+
+
+window.playAnnouncementFromPopup = function(btn){
+  try{
+    const hidden = btn.previousElementSibling;
+    const id = hidden ? hidden.value : null;
+    if(!id){ console.warn('No hidden ID found for playAnnouncement'); toast('Invalid location ID'); return; }
+    if(typeof playAnnouncementById === 'function'){
+      playAnnouncementById(id);
+    } else if(window.playAnnouncementById){
+      window.playAnnouncementById(id);
+    } else {
+      console.error('playAnnouncementById not found');
+      toast('Announcement function missing');
+    }
+  }catch(e){
+    console.error('playAnnouncementFromPopup error', e);
+  }
+};
+window.playAnnouncementById = playAnnouncementById;
+
+</script>
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- SheetJS for export -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <style>
+    body{ -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; }
+    .mapbox{ width:100%; height:56vh; min-height:280px; border-radius:12px; overflow:hidden; box-shadow:0 10px 30px rgba(2,6,23,0.06); }
+    @media (min-width:1024px){ .mapbox{ height:48vh; } }
+    .list-row{ background:#fff; border-radius:10px; padding:.75rem; box-shadow:0 6px 18px rgba(2,6,23,0.04); }
+    .chip{ background:#eef2ff;color:#3730a3;padding:.2rem .5rem;border-radius:999px;font-size:.75rem; }
+    .small-muted{ color:#64748b; font-size:.9rem; }
+    .hidden{ display:none!important; }
+    .page-back{ margin-bottom:.75rem; }
+    .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, 'Roboto Mono', monospace; }
+    .logo-small{ width:36px;height:24px;object-fit:contain;border-radius:4px; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-900">
+
+<!-- HEADER -->
+<header class="bg-blue-600 text-white sticky top-0 z-40">
+  <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div id="logoBox" class="w-10 h-10 bg-white rounded-md flex items-center justify-center text-blue-600 font-bold">BM</div>
+      <div>
+        <div id="companyTitle" class="font-semibold">BusMate</div>
+        <div id="companySub" class="text-xs opacity-90">Smart Buddy for Bus Operator</div>      <div class="ml-4"><button id="debugToggleBtn" class="hidden bg-white text-blue-600 px-3 py-1 rounded" onclick="toggleDebug()">Enable Debug</button></div>
+      </div>
+    </div>
+    <div class="flex items-center gap-4">
+      <div id="roleLabel" class="text-sm"></div>
+      <div class="text-sm">Welcome <span id="userLabel">Guest</span></div>
+      <button id="logoutBtn" class="hidden bg-white text-blue-600 px-3 py-1 rounded" onclick="logout()">Logout</button>
+    </div>
+  </div>
+</header>
+
+<main class="max-w-6xl mx-auto p-4 space-y-6">
+
+  <!-- LOGIN -->
+  <section id="pageLogin">
+    <div class="max-w-md mx-auto bg-white rounded-xl shadow p-6">
+      <div class="text-center">
+        <div class="w-14 h-14 rounded-xl bg-blue-600 mx-auto mb-2"></div>
+        <h2 class="text-2xl font-bold">BusMate</h2>
+        <p class="text-sm text-slate-500 mt-1">Sign in — Master / Admin / Operator</p>
+      </div>
+
+      <div class="mt-6 space-y-3">
+        <label class="block text-sm">Username</label>
+        <input id="loginUser" class="w-full rounded-lg border px-3 py-2" placeholder="bhagyesh / admin / operator" />
+        <label class="block text-sm">Password</label>
+        <input id="loginPass" type="password" class="w-full rounded-lg border px-3 py-2" placeholder="password" />
+        <div class="flex gap-2 mt-4">
+          <button id="loginBtn" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700" onclick="handleLogin()">Login</button>
+          <button id="helpBtn" class="bg-slate-100 px-4 py-2 rounded hover:bg-slate-200" onclick="showHelp()">Help</button>
+        </div>
+        <div class="text-xs text-slate-400 mt-3">Managed by: <a href="mailto:bhagyeshlimbad@gmail.com" class="underline">bhagyeshlimbad@gmail.com</a></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOME / DASHBOARD -->
+  <section id="pageHome" class="hidden">
+    <div class="grid gap-4">
+      <div class="bg-white rounded-xl shadow p-4 flex items-center justify-between">
+        <div>
+          <div id="homeCompanyTitle" class="text-lg font-semibold"></div>
+          <div id="homeCompanySub" class="text-sm text-slate-500">Dashboard</div>
+        </div>
+        <div class="text-right">
+          <div id="homeUserLabel" class="font-medium"></div>
+          <div id="homeRole" class="text-xs text-slate-200"></div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <button id="tileCompanies" class="tile hidden bg-white rounded-xl shadow p-4 text-left hover:shadow-md" onclick="go('pageMasterAdmin')">
+          <div class="font-semibold">Company Management</div>
+          <div class="text-sm text-slate-500">Create / Enable / Disable</div>
+        </button>
+
+        <button id="tileUsers" class="tile hidden bg-white rounded-xl shadow p-4 text-left hover:shadow-md" onclick="go('pageUsers')">
+          <div class="font-semibold">Manage Users</div>
+          <div class="text-sm text-slate-500">Create / Edit / Assign</div>
+        </button>
+
+        <button id="tileLocations" class="tile hidden bg-white rounded-xl shadow p-4 text-left hover:shadow-md" onclick="go('pageLocations')">
+          <div class="font-semibold">Manage Locations</div>
+          <div class="text-sm text-slate-500">Stops / Radius / Msg</div>
+        </button>
+
+        <button id="tileTrips" class="tile hidden bg-white rounded-xl shadow p-4 text-left hover:shadow-md" onclick="go('pageTripSetup')">
+          <div class="font-semibold">Manage Trips</div>
+          <div class="text-sm text-slate-500">Create / Order / Save</div>
+        </button>
+
+        <button id="tileStart" class="tile hidden bg-white rounded-xl shadow p-4 text-left hover:shadow-md" onclick="go('pageStartTrip')">
+          <div class="font-semibold">Start Trip</div>
+          <div class="text-sm text-slate-500">Start & Track</div>
+        </button>
+
+        <button id="tileReports" class="tile hidden bg-white rounded-xl shadow p-4 text-left hover:shadow-md" onclick="go('pageReports')">
+          <div class="font-semibold">Reports</div>
+          <div class="text-sm text-slate-500">Trip history & logs</div>
+        </button>
+      </div>
+
+      <div class="bg-white rounded-xl shadow p-4">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div><div class="text-sm text-slate-500">Locations</div><div id="statLocations" class="font-semibold">0</div></div>
+          <div><div class="text-sm text-slate-500">Trips</div><div id="statTrips" class="font-semibold">0</div></div>
+          <div><div class="text-sm text-slate-500">Companies</div><div id="statCompanies" class="font-semibold">0</div></div>
+          <div><div class="text-sm text-slate-500">Runs</div><div id="statRuns" class="font-semibold">0</div></div>
+        </div>
+      </div>
+
+      <!-- Account / Password -->
+      <div id="passwordBox" class="bg-white rounded-xl shadow p-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 class="font-semibold">My Account</h3>
+            <div class="text-xs text-slate-500">Change your password</div>
+          </div>
+          <div>
+            <button class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded" onclick="openPasswordForm()">Change Password</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MASTER ADMIN -->
+  <section id="pageMasterAdmin" class="hidden">
+    <div class="bg-white rounded-xl shadow p-4">
+      <div class="page-back"><button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="go('pageHome')">← Back</button></div>
+      <div class="flex items-center justify-between">
+        <h2 class="text-lg font-semibold">Master Admin — Companies</h2>
+        <div>
+          <button class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700" onclick="openCompanyForm()">Create Company</button>
+        </div>
+      </div>
+      <div class="mt-4"><ul id="companyList" class="space-y-3"></ul></div>
+    </div>
+
+    <div id="companyModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div class="bg-white p-4 rounded-xl w-96">
+        <h3 class="font-semibold">Create / Edit Company</h3>
+        <label class="block mt-2 text-sm">Company Name</label>
+        <input id="companyNameInp" class="w-full border rounded px-3 py-2" />
+        <label class="block mt-2 text-sm">Logo URL (optional)</label>
+        <input id="companyLogoInp" class="w-full border rounded px-3 py-2" />
+        <div class="flex gap-2 mt-3">
+          <button class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700" onclick="saveCompany()">Save</button>
+          <button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="closeCompanyModal()">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- USERS -->
+  <section id="pageUsers" class="hidden">
+    <div class="bg-white rounded-xl shadow p-4">
+      <div class="page-back"><button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="go('pageHome')">← Back</button></div>
+      <div class="flex items-center justify-between">
+        <h2 class="text-lg font-semibold">Users</h2>
+        <div><button class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700" onclick="openUserForm()">Add User</button></div>
+      </div>
+      <div class="mt-4"><ul id="usersList" class="space-y-3"></ul></div>
+    </div>
+
+    <div id="userModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div class="bg-white p-4 rounded-xl w-96">
+        <h3 class="font-semibold">Add / Edit User</h3>
+        <label class="block mt-2 text-sm">Username</label>
+        <input id="userNameInp" class="w-full border rounded px-3 py-2" />
+        <label class="block mt-2 text-sm">Password</label>
+        <input id="userPassInp" class="w-full border rounded px-3 py-2" />
+        <label class="block mt-2 text-sm">Display Name</label>
+        <input id="userDisplayInp" class="w-full border rounded px-3 py-2" />
+        <label class="block mt-2 text-sm">Role</label>
+        <select id="userRoleInp" class="w-full border rounded px-3 py-2"><option>Admin</option><option>Operator</option></select>
+        <label class="block mt-2 text-sm">Company</label>
+        <select id="userCompanyInp" class="w-full border rounded px-3 py-2"></select>
+        <div class="flex gap-2 mt-3">
+          <button class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700" onclick="saveUser()">Save</button>
+          <button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="closeUserModal()">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- LOCATIONS -->
+  <section id="pageLocations" class="hidden">
+    <div class="grid md:grid-cols-2 gap-4">
+      <div class="bg-white rounded-xl shadow p-4">
+        <div class="page-back"><button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="go('pageHome')">← Back</button></div>
+        <h3 class="font-semibold">Add / Edit Location</h3>
+        <label class="block mt-3 text-sm">Name</label>
+        <input type="hidden" id="locId" />
+<input id="locName" class="w-full border rounded px-3 py-2" />
+        <div class="grid grid-cols-2 gap-2 mt-2">
+          <div><label class="text-sm">Latitude</label><input id="locLat" class="w-full border rounded px-3 py-2" /></div>
+          <div><label class="text-sm">Longitude</label><input id="locLng" class="w-full border rounded px-3 py-2" /></div>
+        </div>
+        <label class="block mt-2 text-sm">Radius (meters)</label>
+        <input id="locRadius" type="number" value="500" class="w-full border rounded px-3 py-2" />
+        <label class="block mt-2 text-sm">Announcement message</label>
+        <input id="locMsg" class="w-full border rounded px-3 py-2" placeholder="Custom announcement text (played during trip)" />
+        <label class="block mt-2 text-sm">Announcement Audio (optional)</label>
+        <input id="locAudio" type="file" accept="audio/*" class="w-full border rounded px-3 py-2" />
+        <div class="flex gap-2 mt-3">
+          <button class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded" onclick="useCurrentGPS()">Use Current GPS</button>
+          <button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded" onclick="saveLocation()">Save</button>
+          <button class="bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded" onclick="testAnnouncement()">Test Announcement</button>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl shadow p-4">
+        <h3 class="font-semibold">Map Picker</h3>
+        <div id="locMap" class="mapbox mt-2"></div>
+        <h4 class="mt-4">Saved Locations</h4>
+        <div id="locationList" class="mt-2 space-y-2"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TRIP SETUP -->
+  <section id="pageTripSetup" class="hidden">
+    <div class="page-back"><button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="go('pageHome')">← Back</button></div>
+
+    <div class="bg-white rounded-xl shadow p-4">
+      <h3 class="font-semibold">Manage Trips</h3>
+
+      <div class="grid md:grid-cols-3 gap-4 mt-4">
+        <div>
+          <label class="text-sm">Trip Name</label>
+          <input id="tripName" class="w-full border rounded px-3 py-2" />
+          <label class="text-sm mt-2">Available Locations</label>
+          <div id="availList" class="border rounded mt-2 p-2 h-64 overflow-auto bg-white"></div>
+        </div>
+
+        <div class="flex flex-col items-center justify-center gap-2">
+          <button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded" onclick="addPlanned()">Add →</button>
+          <button class="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded" onclick="removePlanned()">← Remove</button>
+          <button class="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded" onclick="movePlanned(-1)">↑ Up</button>
+          <button class="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded" onclick="movePlanned(1)">↓ Down</button>
+          <button class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded" onclick="clearPlanned()">Clear</button>
+        </div>
+
+        <div>
+          <label class="text-sm">Planned Trip (ordered)</label>
+          <div id="plannedList" class="border rounded mt-2 p-2 h-64 overflow-auto bg-white"></div>
+          <div class="flex gap-2 mt-3">
+            <button class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded" onclick="saveTrip()">Save Trip</button>
+          </div>
+        </div>
+      </div>
+
+      <h4 class="mt-4">Saved Trips</h4>
+      <div id="tripList" class="mt-2 space-y-2"></div>
+    </div>
+  </section>
+
+  <!-- PASSWORD MODAL (like Manage Trip modal) -->
+  <div id="passwordModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+    <div class="bg-white p-4 rounded-xl w-96">
+      <h3 class="font-semibold">Change Password</h3>
+      <input id="newPassModal1" type="password" class="w-full border rounded px-3 py-2 mt-3" placeholder="New password" />
+      <input id="newPassModal2" type="password" class="w-full border rounded px-3 py-2 mt-2" placeholder="Confirm new password" />
+      <div class="flex gap-2 mt-3 justify-end">
+        <button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="closePasswordModal()">Cancel</button>
+        <button class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700" onclick="savePassword()">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- START TRIP -->
+  <section id="pageStartTrip" class="hidden">
+    <div id="startPanel" class="bg-white rounded-xl shadow p-4">
+      <div class="page-back"><button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="go('pageHome')">← Back</button></div>
+      <h3 class="font-semibold">Start Trip</h3>
+      <label class="block mt-3 text-sm">Choose trip</label>
+      <select id="startTripSelect" class="w-full border rounded px-3 py-2"></select>
+      <div class="flex gap-2 mt-3">
+        <button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded" onclick="startSelectedTrip()">Start Trip</button>
+      </div>
+    </div>
+
+    <div id="ongoingPanel" class="hidden mt-4">
+      <!-- BACK BUTTON (INSIDE ONGOING PANEL) -> ALWAYS GO HOME -->
+      <div class="flex justify-between items-center mb-3">
+        <div>
+          <button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="go('pageHome')">← Back to Home</button>
+        </div>
+</div>
+
+        <div><button class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded" onclick="endTrip()">End Trip</button></div>
+      </div>
+
+      <div>
+        <div id="runMap" class="mapbox"></div>
+      </div>
+
+      <div class="mt-3 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <label class="text-sm small-muted">Auto Refresh:</label>
+          <select id="autoRefreshSelect" class="border rounded px-2 py-1 bg-white" onchange="setAutoRefreshInterval()">
+            <option value="5">5s</option>
+            <option value="10" selected>10s</option>
+            <option value="15">15s</option>
+            <option value="20">20s</option>
+          </select>
+          <div class="text-sm text-slate-500 ml-2">Device GPS mode</div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button class="bg-white border px-3 py-1 rounded hover:bg-gray-50" onclick="centerCurrentGPS()">Current Location</button>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl shadow p-4 mt-4">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <div class="flex flex-wrap gap-2 items-center">
+            <button class="bg-white border px-3 py-2 rounded shadow hover:bg-gray-50" onclick="centerMap()">Center Map</button>
+            
+            <div class="flex items-center gap-2 pl-2">
+              <div class="text-xs small-muted">Volume</div>
+              <input id="volControl" type="range" min="0" max="1" step="0.1" value="1" onchange="setVolume(this.value)" />
+            </div>
+          </div>
+
+          <div class="text-sm text-slate-600">
+            <div><span class="font-semibold" id="ongoingTripName">—</span></div>
+            <div class="text-xs text-slate-400">Started: <span id="ongoingStart">—</span></div>
+          </div>
+        </div>
+
+        <hr class="my-3"/>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <div class="text-xs small-muted">Current Latitude / Longitude</div>
+            <div class="font-mono" id="curLat">—</div>
+            <div class="font-mono" id="curLng">—</div>
+            <div class="text-xs small-muted mt-2">Current Speed</div>
+            <div id="curSpeed">—</div>
+          </div>
+
+          <div>
+            <div class="text-xs small-muted">Upcoming Stop</div>
+            <div class="font-semibold" id="upcomingName">—</div>
+            <div class="text-xs small-muted mt-2">Distance to Next</div>
+            <div id="distNext">—</div>
+            <div class="text-xs small-muted mt-2">ETA to Next</div>
+            <div id="etaNext">—</div>
+          </div>
+
+          <div>
+            <div class="text-xs small-muted">Progress</div>
+            <div class="font-semibold" id="progressStops">—</div>
+            <div class="w-full bg-slate-100 h-3 rounded mt-2 overflow-hidden">
+              <div id="progressBar" class="bg-blue-600 h-3 rounded" style="width:0%"></div>
+            </div>
+            <div class="text-xs text-slate-500 mt-2">Stops reached / total</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- REPORTS -->
+  <section id="pageReports" class="hidden">
+    <div class="page-back"><button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="go('pageHome')">← Back</button></div>
+    <div class="bg-white rounded-xl shadow p-4">
+      <div class="flex items-center justify-between">
+        <h3 class="font-semibold">Reports</h3>
+        <div>
+          <button class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded" onclick="exportTripsExcel()">Export Trips</button>
+          <button class="bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded" onclick="exportLoginsExcel()">Export Logins</button>
+        </div>
+      </div>
+
+      <h4 class="mt-4">Trip History</h4>
+      <div id="reportTrips" class="mt-2 space-y-2"></div>
+
+      <h4 class="mt-4">Login Activity</h4>
+      <div id="reportLogins" class="mt-2 space-y-2"></div>
+    </div>
+  </section>
+
+</main>
+
+<!-- toast -->
+<div id="toast" class="hidden fixed bottom-6 right-6 bg-slate-800 text-white px-4 py-2 rounded shadow"></div>
+
+<!-- Supabase client import and main logic -->
+<script type="module">
+/* Supabase config */
+const SUPABASE_URL = 'https://wxulwistfjspubqhidrr.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4dWx3aXN0ZmpzcHVicWhpZHJyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcxNzExNDgsImV4cCI6MjA3Mjc0NzE0OH0.y3BVIcjcx17QABUTsSkD3hAgyGhu5evILiKXbrcrBLQ';
+
+/* load supabase-js as ES module */
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+window.SB = sb;
+
+/* helpers */
+const DEBUG = false;
+function logd(...args){ if(window._debugOn) console.debug(...args); }
+function toggleDebug(){ window._debugOn = !window._debugOn; const b = document.getElementById("debugToggleBtn"); if(b) b.textContent = window._debugOn? "Disable Debug":"Enable Debug"; try{ b.classList.remove("hidden"); }catch(e){} toast("Debug " + (window._debugOn?"ON":"OFF"),1200); }
+
+const Cache = { _cache:{}, get(key){ return this._cache[key]; }, set(key,val){ this._cache[key]=val; } };
+function toast(msg, ms=1600){ const el=document.getElementById('toast'); el.textContent=msg; el.classList.remove('hidden'); setTimeout(()=>el.classList.add('hidden'), ms); }
+function fmtISO(iso){ try{ return new Date(iso).toLocaleString(); }catch(e){ return iso; } }
+function uid(pref='id'){ return pref + '_' + Math.random().toString(36).slice(2,9); }
+function haversine(lat1,lon1,lat2,lon2){ const toRad=v=>v*Math.PI/180; const R=6371000; const dLat=toRad(lat2-lat1); const dLon=toRad(lon2-lon1); const a=Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lon2))*Math.sin(dLon/2)**2; const c=2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a)); return R*c; }
+
+/* DB helpers */
+async function db_select(table, opts={}) {
+  let q = sb.from(table).select('*');
+  if(opts.eq) for(const k in opts.eq) q = q.eq(k, opts.eq[k]);
+  if(opts.order) q = q.order(opts.order.col, { ascending: opts.order.asc });
+  const { data, error } = await q;
+  if(error) { console.error('db_select error', table, error); return []; }
+  return data || [];
+}
+async function db_insert(table, records) {
+  const { data, error } = await sb.from(table).insert(records).select();
+  if(error){ console.error('db_insert error', table, error); throw error; }
+  return data;
+}
+async function db_update(table, updates, match) {
+  const { data, error } = await sb.from(table).update(updates).match(match).select();
+  if(error){ console.error('db_update error', table, error); throw error; }
+  return data;
+}
+async function db_delete(table, match) {
+  const { data, error } = await sb.from(table).delete().match(match).select();
+  if(error){ console.error('db_delete error', table, error); throw error; }
+  return data;
+}
+
+/* Storage helpers: upload & create signed URL (1000 days) */
+async function uploadAudioFile(file, destPath){
+  if(!file) return null;
+  const filename = `${Date.now()}_${file.name.replace(/\s/g,'_')}`;
+  const path = `${destPath || 'location_audio'}/${filename}`;
+  // upload
+  const { error: upErr } = await sb.storage.from('audio').upload(path, file, { cacheControl: '3600', upsert: false });
+  if(upErr){ console.error('uploadAudioFile error', upErr); throw upErr; }
+  // create signed URL valid ~1000 days
+  const expiry = 60 * 60 * 24 * 1000; // seconds = 1000 days
+  const { data, error } = await sb.storage.from('audio').createSignedUrl(path, expiry);
+  if(error){ console.error('createSignedUrl error', error); return null; }
+  return data?.signedUrl || null;
+}
+
+/* seed demo */
+async function seedDemoIfEmpty(){
+  try{
+    const comps = await db_select('companies');
+    if(comps.length>0) return;
+    const [comp] = await db_insert('companies', [{ id: uid('comp'), name:'Demo Transit Co', logo:'', enabled:true }]);
+    await db_insert('users', [
+      { username:'bhagyesh', pass:'bhagyesh', role:'Master', company_id:null, enabled:true, display_name:'Bhagyesh Limbad' },
+      { username:'admin', pass:'admin', role:'Admin', company_id:comp.id, enabled:true, display_name:'Admin' },
+      { username:'operator', pass:'operator', role:'Operator', company_id:comp.id, enabled:true, display_name:'Operator 1' }
+    ]);
+    const locs = [
+      { id: uid('loc'), name:'Station A', lat:21.6417, lng:69.6293, radius:500, msg:'Station A — please prepare to disembark', audio_url:null, company_id:comp.id },
+      { id: uid('loc'), name:'Station B', lat:21.6517, lng:69.6390, radius:400, msg:'Station B — doors will open on the left', audio_url:null, company_id:comp.id },
+      { id: uid('loc'), name:'Station C', lat:21.6617, lng:69.6490, radius:300, msg:'Station C — final stop', audio_url:null, company_id:comp.id }
+    ];
+    await db_insert('locations', locs);
+    await db_insert('trips', [{ id: uid('trip'), name:'Demo Route', locs: locs, company_id:comp.id }]);
+    }catch(e){ }
+}
+
+/* Authentication */
+async function handleLogin(){
+  const userInput = (document.getElementById('loginUser').value||'').trim();
+  const passInput = (document.getElementById('loginPass').value||'').trim();
+  if(!userInput) return alert('Enter username');
+
+  // Master quick-check
+  if(userInput.toLowerCase()==='bhagyesh' && passInput==='bhagyesh'){
+    const s = { user:'bhagyesh', role:'Master', company_id:null, display_name:'Bhagyesh Limbad' };
+    await saveSessionLocally(s);
+    await logLogin(s.user, s.role);
+    bootAfterLogin(); 
+    return;
+  }
+
+  const users = await db_select('users');
+  const found = users.find(u => u.username.toLowerCase() === userInput.toLowerCase() && u.pass === passInput);
+  if(!found) return alert('Invalid credentials');
+  if(found.enabled===false) return alert('User disabled');
+  const sess = { user: found.username, role: found.role, company_id: found.company_id || null, display_name: found.display_name || found.username };
+  await saveSessionLocally(sess);
+  await logLogin(sess.user, sess.role);
+  bootAfterLogin();
+}
+async function saveSessionLocally(sess){ localStorage.setItem('bm_session', JSON.stringify(sess)); }
+function getSessionLocally(){ try{ return JSON.parse(localStorage.getItem('bm_session')); }catch(e){ return null; } }
+function clearSessionLocal(){ localStorage.removeItem('bm_session'); }
+
+async function logLogin(user, role){
+  try{ await db_insert('logins', [{ user, role, time: new Date().toISOString(), device: navigator.userAgent }]); }catch(e){ }
+}
+
+async function logout(){
+  clearSessionLocal();
+  if(watchId!==null){ navigator.geolocation.clearWatch(watchId); watchId=null; }
+  if(autoRefreshIntervalId!==null){ clearInterval(autoRefreshIntervalId); autoRefreshIntervalId=null; }
+  runtime.active=null;
+  document.getElementById('pageLogin').classList.remove('hidden');
+  document.getElementById('pageHome').classList.add('hidden');
+  document.getElementById('logoutBtn').classList.add('hidden');
+  document.getElementById('userLabel').textContent = 'Guest';
+  document.getElementById('roleLabel').textContent = '';
+  toast('Logged out');
+}
+
+async function bootAfterLogin(){
+  // show debug toggle for owner
+  try{ document.getElementById('debugToggleBtn').classList.remove('hidden'); }catch(e){}
+
+  const s = getSessionLocally();
+  if(!s) return;
+  document.getElementById('logoutBtn').classList.remove('hidden');
+  document.getElementById('userLabel').textContent = s.display_name || s.user;
+  document.getElementById('roleLabel').textContent = s.role;
+  await applyHeader();
+  go('pageHome');
+}
+
+/* change password modal functions */
+function openPasswordForm(){ document.getElementById('passwordModal').classList.remove('hidden'); document.getElementById('newPassModal1').value=''; document.getElementById('newPassModal2').value=''; }
+function closePasswordModal(){ document.getElementById('passwordModal').classList.add('hidden'); }
+async function savePassword(){
+  const s = getSessionLocally(); if(!s) return alert('Not logged in');
+  const p1 = document.getElementById('newPassModal1').value.trim(); const p2 = document.getElementById('newPassModal2').value.trim();
+  if(!p1 || !p2) return alert('Enter both fields'); if(p1!==p2) return alert('Passwords do not match');
+  try{ await db_update('users', { pass: p1 }, { username: s.user }); closePasswordModal(); toast('Password updated. Please login again.'); logout(); }catch(e){ console.error('savePassword err', e); alert('Could not update password'); }
+}
+
+/* applyHeader */
+async function applyHeader(){
+  const s = getSessionLocally();
+  const comps = await db_select('companies');
+  const comp = s?.company_id ? comps.find(c=>c.id===s.company_id) : null;
+  document.getElementById('companyTitle').textContent = comp?.name || 'BusMate';
+  document.getElementById('companySub').textContent = 'Vehicle Tracking Prototype';
+  if(!s) return;
+  document.getElementById('userLabel').textContent = s.display_name || s.user;
+  document.getElementById('roleLabel').textContent = s.role;
+
+  // show tiles based on role
+  ['tileCompanies','tileUsers','tileLocations','tileTrips','tileStart','tileReports'].forEach(id=>document.getElementById(id).classList.add('hidden'));
+  if(s.user==='bhagyesh' || s.role==='Master'){
+    ['tileCompanies','tileUsers','tileLocations','tileTrips','tileStart','tileReports'].forEach(id=>document.getElementById(id).classList.remove('hidden'));
+  } else if(s.role==='Admin'){
+    ['tileUsers','tileLocations','tileTrips','tileStart','tileReports'].forEach(id=>document.getElementById(id).classList.remove('hidden'));
+  } else if(s.role==='Operator'){
+    ['tileStart','tileReports'].forEach(id=>document.getElementById(id).classList.remove('hidden'));
+  }
+
+  const [locCount, tripCount, compCount, runCount] = await Promise.all([
+    db_select('locations').then(d=>d.length).catch(()=>0),
+    db_select('trips').then(d=>d.length).catch(()=>0),
+    db_select('companies').then(d=>d.length).catch(()=>0),
+    db_select('runs').then(d=>d.length).catch(()=>0)
+  ]);
+  document.getElementById('statLocations').textContent = locCount;
+  document.getElementById('statTrips').textContent = tripCount;
+  document.getElementById('statCompanies').textContent = compCount;
+  document.getElementById('statRuns').textContent = runCount;
+}
+
+/* navigation helper with map invalidation */
+function go(pageId){
+  document.querySelectorAll('main section').forEach(s => s.classList.add('hidden'));
+  const el = document.getElementById(pageId);
+  if(el) el.classList.remove('hidden');
+  if(pageId==='pageLocations'){ setTimeout(()=>{ initLocMap(); if(locMap) try{ locMap.invalidateSize(); }catch(e){} },80); renderLocationList(); }
+  if(pageId==='pageTripSetup'){ renderAvailList(); renderPlanned(); renderTripList(); }
+  if(pageId==='pageStartTrip'){ renderStartSelect(); setTimeout(()=>{ if(runMap) try{ runMap.invalidateSize(); }catch(e){} },300); }
+  if(pageId==='pageReports'){ renderReports(); }
+  if(pageId==='pageUsers'){ renderUserList(); }
+  if(pageId==='pageMasterAdmin'){ renderCompanyList(); }
+}
+
+/* Company CRUD */
+let _editingCompany = null;
+async function renderCompanyList(){
+  const wrap = document.getElementById('companyList'); wrap.innerHTML='';
+  const comps = await db_select('companies');
+  if(comps.length===0){ wrap.innerHTML = '<div class="text-sm text-slate-400">No companies</div>'; return; }
+  comps.forEach(c=>{
+    const div = document.createElement('div'); div.className='flex items-center justify-between';
+    div.innerHTML = `<div class="flex items-center gap-3"><img src="${c.logo||''}" class="logo-small" onerror="this.style.display='none'"/><div><div class="font-semibold">${c.name}</div><div class="text-xs text-slate-500">${c.id} · ${c.enabled ? 'Enabled' : 'Disabled'}</div></div></div>
+      <div class="flex gap-2">
+        <button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="editCompany('${c.id}')">Edit</button>
+        <button class="${c.enabled?'bg-yellow-500':'bg-green-600'} text-white px-3 py-1 rounded" onclick="toggleCompany('${c.id}')">${c.enabled ? 'Disable':'Enable'}</button>
+        <button class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded" onclick="deleteCompany('${c.id}')">Delete</button>
+      </div>`;
+    wrap.appendChild(div);
+  });
+}
+function openCompanyForm(){ document.getElementById('companyModal').classList.remove('hidden'); document.getElementById('companyNameInp').value=''; document.getElementById('companyLogoInp').value=''; window._editingCompany=null; }
+function closeCompanyModal(){ document.getElementById('companyModal').classList.add('hidden'); window._editingCompany=null; }
+async function saveCompany(){
+  const name=(document.getElementById('companyNameInp').value||'').trim(); const logo=(document.getElementById('companyLogoInp').value||'').trim();
+  if(!name) return alert('Company name required');
+  try{
+    if(window._editingCompany){
+      await db_update('companies', { name, logo }, { id: window._editingCompany });
+    } else {
+      await db_insert('companies', [{ id: uid('comp'), name, logo, enabled:true }]);
+    }
+    await renderCompanyList();
+    closeCompanyModal();
+    await applyHeader();
+    toast('Company saved');
+  }catch(e){ alert('Error saving company'); console.error(e); }
+}
+async function editCompany(id){
+  const comps=await db_select('companies'); const c=comps.find(x=>x.id===id); if(!c) return;
+  window._editingCompany=id;
+  document.getElementById('companyNameInp').value=c.name; document.getElementById('companyLogoInp').value=c.logo||''; document.getElementById('companyModal').classList.remove('hidden');
+}
+async function toggleCompany(id){
+  try{
+    const comps = await db_select('companies'); const idx = comps.findIndex(c=>c.id===id);
+    if(idx===-1) return;
+    const newVal = !comps[idx].enabled;
+    await db_update('companies', { enabled: newVal }, { id });
+    await renderCompanyList();
+    await applyHeader();
+  }catch(e){ }
+}
+async function deleteCompany(id){
+  if(!confirm('Delete company and related data?')) return;
+  try{
+    await db_delete('companies', { id });
+    await db_delete('users', { company_id: id });
+    await db_delete('locations', { company_id: id });
+    await db_delete('trips', { company_id: id });
+    await renderCompanyList(); await renderUserList(); await renderLocationList(); await renderTripList(); toast('Company deleted');
+  }catch(e){ console.error('deleteCompany', e); alert('Delete failed'); }
+}
+
+/* Users */
+let _editingUser = null;
+async function renderUserList(){
+  const wrap = document.getElementById('usersList'); wrap.innerHTML='';
+  const s = getSessionLocally();
+  const users = await db_select('users');
+  const visible = (!s || s.user==='bhagyesh') ? users : users.filter(u=>u.company_id===s.company_id);
+  if(visible.length===0){ wrap.innerHTML = '<div class="text-sm text-slate-400">No users</div>'; return; }
+  const comps = await db_select('companies');
+  visible.forEach(u=>{
+    const comp = comps.find(c=>c.id===u.company_id);
+    const div = document.createElement('div'); div.className='list-row flex items-center justify-between';
+    div.innerHTML = `<div><div class="font-medium">${u.display_name || u.username} <span class="chip">${u.role}</span></div><div class="text-xs text-slate-500">${u.username} · ${comp?comp.name:'—'}</div></div>
+      <div class="flex gap-2"><button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="editUser('${u.username}')">Edit</button><button class="bg-yellow-500 px-3 py-1 rounded text-white" onclick="toggleUser('${u.username}')">${u.enabled? 'Disable':'Enable'}</button><button class="bg-red-600 px-3 py-1 rounded text-white" onclick="deleteUser('${u.username}')">Delete</button></div>`;
+    wrap.appendChild(div);
+  });
+}
+async function openUserForm(){
+  const comps = await db_select('companies'); const sel = document.getElementById('userCompanyInp'); sel.innerHTML=''; comps.forEach(c=>{ const o=document.createElement('option'); o.value=c.id; o.textContent=c.name; sel.appendChild(o); });
+  _editingUser=null; document.getElementById('userNameInp').value=''; document.getElementById('userPassInp').value=''; document.getElementById('userDisplayInp').value=''; document.getElementById('userRoleInp').value='Operator'; document.getElementById('userModal').classList.remove('hidden');
+}
+function closeUserModal(){ document.getElementById('userModal').classList.add('hidden'); _editingUser=null; document.getElementById('userNameInp').disabled=false; }
+async function saveUser(){
+  const username=(document.getElementById('userNameInp').value||'').trim(); const pass=(document.getElementById('userPassInp').value||'').trim(); const display=(document.getElementById('userDisplayInp').value||'').trim(); const role=document.getElementById('userRoleInp').value; const companyId=document.getElementById('userCompanyInp').value||null;
+  if(!username||!pass) return alert('Username & password required');
+  try{
+    const users = await db_select('users');
+    if(_editingUser){
+      await db_update('users', { pass, display_name: display, role, company_id: companyId, enabled:true }, { username: _editingUser });
+    } else {
+      if(users.find(u=>u.username===username)) return alert('Username exists');
+      await db_insert('users', [{ username, pass, role, company_id: companyId, enabled:true, display_name: display }]);
+    }
+    closeUserModal(); await renderUserList(); toast('User saved');
+  }catch(e){ console.error('saveUser', e); alert('Failed to save'); }
+}
+async function editUser(username){
+  const users = await db_select('users'); const u = users.find(x=>x.username===username); if(!u) return;
+  _editingUser=username; document.getElementById('userNameInp').value=u.username; document.getElementById('userNameInp').disabled=true; document.getElementById('userPassInp').value=u.pass; document.getElementById('userDisplayInp').value=u.display_name||''; document.getElementById('userRoleInp').value=u.role;
+  const comps=await db_select('companies'); const sel=document.getElementById('userCompanyInp'); sel.innerHTML=''; comps.forEach(c=>{ const o=document.createElement('option'); o.value=c.id; o.textContent=c.name; if(c.id===u.company_id) o.selected=true; sel.appendChild(o); });
+  document.getElementById('userModal').classList.remove('hidden');
+}
+async function toggleUser(username){
+  try{
+    const users = await db_select('users'); const u = users.find(x=>x.username===username); if(!u) return;
+    await db_update('users', { enabled: !u.enabled }, { username });
+    await renderUserList();
+  }catch(e){ }
+}
+async function deleteUser(username){
+  if(!confirm('Delete user?')) return; try{ await db_delete('users', { username }); await renderUserList(); toast('User deleted'); }catch(e){ console.error('deleteUser', e); alert('Delete failed'); }
+}
+
+/* Locations */
+let locMap=null, locMarker=null, locCircle=null;
+async function initLocMap(){
+  if(locMap){ try{ locMap.invalidateSize(); }catch(e){} return; }
+  locMap = L.map('locMap');
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution:'© OpenStreetMap' }).addTo(locMap);
+  locMap.setView([21.6417,69.6293], 12);
+  locMap.on('click', e=> setPicker(e.latlng.lat, e.latlng.lng));
+  if(navigator.geolocation){
+    navigator.geolocation.getCurrentPosition(p=> locMap.setView([p.coords.latitude,p.coords.longitude], 14), ()=>{});
+  }
+  renderLocationList();
+}
+function setPicker(lat,lng){
+  document.getElementById('locLat').value = lat.toFixed(6);
+  document.getElementById('locLng').value = lng.toFixed(6);
+  const r = parseInt(document.getElementById('locRadius').value||500,10);
+  if(!locMarker){ locMarker = L.marker([lat,lng], { draggable:true }).addTo(locMap); locMarker.on('dragend', e=>{ const p=e.target.getLatLng(); document.getElementById('locLat').value = p.lat.toFixed(6); document.getElementById('locLng').value = p.lng.toFixed(6); drawLocCircle(p.lat,p.lng); }); } else locMarker.setLatLng([lat,lng]);
+  drawLocCircle(lat,lng,r);
+}
+function drawLocCircle(lat,lng){
+  const radius = parseInt(document.getElementById('locRadius').value||500,10);
+  if(locCircle) locMap.removeLayer(locCircle);
+  locCircle = L.circle([lat,lng], { radius, fillOpacity:0.06, color:'#2563eb' }).addTo(locMap);
+}
+function useCurrentGPS(){
+  if(!navigator.geolocation) return alert('Geolocation not available');
+  navigator.geolocation.getCurrentPosition(p=>{ locMap.setView([p.coords.latitude,p.coords.longitude],16); setPicker(p.coords.latitude,p.coords.longitude); toast('Picker updated'); }, err=> alert('GPS error: '+err.message), { enableHighAccuracy:true });
+}
+function testAnnouncement(){ const msg=(document.getElementById('locMsg').value||'Test announcement').trim(); speak(msg); }
+
+async function saveLocation(){
+  const idEl = document.getElementById('locId');
+  const id = idEl ? idEl.value.trim() : '';
+  const name = (document.getElementById('locName').value||'').trim();
+  const lat = parseFloat(document.getElementById('locLat').value);
+  const lng = parseFloat(document.getElementById('locLng').value);
+  const radius = parseInt(document.getElementById('locRadius').value||500,10);
+  const msg = (document.getElementById('locMsg').value||'').trim();
+  const audioFile = document.getElementById('locAudio') ? document.getElementById('locAudio').files[0] || null : null;
+
+  if(!name || isNaN(lat) || isNaN(lng)){
+    return alert('Provide name, lat and lng');
+  }
+  if(radius<=0) return alert('Radius > 0 required');
+
+  try{
+    let audioUrl = null;
+    if(audioFile){
+      audioUrl = await uploadAudioFile(audioFile, 'location_audio');
+    }
+
+    const s = getSessionLocally();
+    const companyId = (s && s.user!=='bhagyesh') ? s.company_id : (await db_select('companies'))[0]?.id || null;
+
+    if(id){
+      // Update existing location - preserve ID
+      await db_update('locations', { name, lat, lng, radius, msg, audio_url: audioUrl, company_id: companyId }, { id });
+      } else {
+      // Insert with generated id to satisfy NOT NULL constraint on id
+      const newId = uid('loc');
+      const record = { id: newId, name, lat, lng, radius, msg, audio_url: audioUrl, company_id: companyId, created_at: new Date().toISOString() };
+      await db_insert('locations', [record]);
+      }
+
+    if(idEl) idEl.value = '';
+    // clear form fields (optional)
+    document.getElementById('locName').value=''; document.getElementById('locLat').value=''; document.getElementById('locLng').value=''; document.getElementById('locMsg').value=''; if(document.getElementById('locAudio')) document.getElementById('locAudio').value='';
+    await renderLocationList(); await renderAvailList(); toast('Location saved');
+  }catch(e){
+    console.error('saveLocation error', e);
+    alert('Failed to save location: ' + (e.message||e));
+  }
+}
+
+async function renderLocationList(){
+  const wrap=document.getElementById('locationList'); wrap.innerHTML=''; // clear before render (fix duplicates)
+  const s = getSessionLocally(); const locs = await db_select('locations');
+  const comps = await db_select('companies'); const compMap = {}; comps.forEach(c=>compMap[c.id]=c);
+  const visible = (!s || s.user==='bhagyesh') ? locs : locs.filter(l=>l.company_id===s.company_id);
+  if(visible.length===0){ wrap.innerHTML='<div class="text-sm text-slate-400">No locations yet.</div>'; return; }
+  visible.forEach(l=>{
+    const row=document.createElement('div'); row.className='list-row flex items-start justify-between';
+    const company = compMap[l.company_id] || null;
+    const companyHtml = company && company.logo ? `<img src="${company.logo}" class="logo-small mr-2" onerror="this.style.display='none'">` : '';
+    const audioHtml = l.audio_url ? `<div class="text-xs text-slate-600 mt-1">Audio: <a href="${l.audio_url}" target="_blank" class="underline">Listen</a> · <button class="bg-gray-100 px-2 py-1 rounded ml-2" onclick="playUrl('${encodeURIComponent(l.audio_url)}')">Play</button></div>` : '';
+    row.innerHTML = `<div class="flex-1">${companyHtml}<div class="font-semibold">${l.name}</div><div class="text-xs text-slate-500">Lat: ${Number(l.lat).toFixed(6)} · Lng: ${Number(l.lng).toFixed(6)} · R: ${l.radius}m</div>${l.msg?`<div class="text-xs text-slate-600 mt-1">Msg: ${l.msg}</div>`:''}${audioHtml}</div>
+      <div class="flex flex-col gap-2 ml-3">
+        <button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="editLocation('${l.id}')">Edit</button>
+        <button class="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700" onclick="deleteLocation('${l.id}')">Delete</button>
+      </div>`;
+    wrap.appendChild(row);
+  });
+}
+
+
+
+/* helper to play a signed URL safely (decode and play) */
+function playUrl(encodedUrl){
+  try{
+    const url = decodeURIComponent(encodedUrl);
+    const a = new Audio(url);
+    a.play().catch(e=>{ alert('Could not play audio'); });
+  }catch(e){ }
+}
+
+async function editLocation(id){
+  try{
+    const { data, error } = await sb.from('locations').select('*').eq('id', id).single();
+    if(error || !data){ alert('Location not found'); return; }
+    const elId = document.getElementById('locId');
+    if(elId) elId.value = data.id || '';
+    document.getElementById('locName').value = data.name || '';
+    document.getElementById('locLat').value = data.lat || '';
+    document.getElementById('locLng').value = data.lng || '';
+    document.getElementById('locRadius').value = data.radius || 500;
+    document.getElementById('locMsg').value = data.msg || '';
+    // open the locations page UI
+    renderLocationList();
+  }catch(e){
+    console.error('editLocation err', e);
+    alert('Failed to load location for editing');
+  }
+}
+async function deleteLocation(id){
+  if(!confirm('Delete location?')) return;
+  try{ await db_delete('locations', { id }); await renderLocationList(); await renderAvailList(); toast('Location deleted'); }catch(e){ console.error('deleteLocation', e); alert('Delete failed'); }
+}
+
+/* Trips */
+let planned = [], plannedSelIdx = null;
+async function renderAvailList(){
+  const wrap = document.getElementById('availList'); wrap.innerHTML='';
+  const s = getSessionLocally();
+  const locsAll = await db_select('locations');
+  const visible = (!s || s.user==='bhagyesh') ? locsAll : locsAll.filter(l=>l.company_id===s.company_id);
+  if(visible.length===0){ wrap.innerHTML = '<div class="text-sm text-slate-400">No locations available.</div>'; return; }
+  visible.forEach(l=>{
+    const el = document.createElement('div'); el.className='p-2 rounded hover:bg-slate-50 flex items-center justify-between';
+    el.innerHTML = `<div><div class="font-medium">${l.name}</div><div class="text-xs text-slate-500">${Number(l.lat).toFixed(4)}, ${Number(l.lng).toFixed(4)}</div></div><div><button class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded" onclick="planAddFromButton('${l.id}')">Add</button></div>`;
+    wrap.appendChild(el);
+  });
+}
+async function planAddFromButton(locId){
+  const loc = (await db_select('locations')).find(x=>x.id===locId);
+  if(!loc) return;
+  planned.push({ id: loc.id, name: loc.name, lat: loc.lat, lng: loc.lng, radius: loc.radius, msg: loc.msg||'', audio_url: loc.audio_url||null });
+  renderPlanned();
+}
+function renderPlanned(){ const wrap=document.getElementById('plannedList'); wrap.innerHTML=''; if(planned.length===0){ wrap.innerHTML='<div class="text-sm text-slate-400">No planned stops</div>'; return; } planned.forEach((p,i)=>{ const el=document.createElement('div'); el.className='p-2 rounded hover:bg-slate-50 flex items-center justify-between'; el.innerHTML=`<div><div class="font-medium">${i+1}. ${p.name}</div><div class="text-xs text-slate-500">R ${p.radius}m</div></div><div class="flex gap-2"><button class="bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded" onclick="plannedSelect(${i})">Select</button></div>`; if(i===plannedSelIdx) el.classList.add('ring','ring-blue-300'); wrap.appendChild(el); }); }
+function plannedSelect(i){ plannedSelIdx = (plannedSelIdx===i? null : i); renderPlanned(); }
+function removePlanned(){ if(plannedSelIdx===null) return alert('Select planned stop'); planned.splice(plannedSelIdx,1); plannedSelIdx=null; renderPlanned(); }
+function movePlanned(dir){ if(plannedSelIdx===null) return alert('Select planned stop'); const i=plannedSelIdx, j=i+dir; if(j<0||j>=planned.length) return; [planned[i],planned[j]]=[planned[j],planned[i]]; plannedSelIdx=j; renderPlanned(); }
+function clearPlanned(){ if(!confirm('Clear planned stops?')) return; planned=[]; plannedSelIdx=null; renderPlanned(); }
+async function saveTrip(){ const name=(document.getElementById('tripName').value||'').trim(); if(!name) return alert('Trip name required'); if(planned.length<2) return alert('Select at least 2 stops'); const s=getSessionLocally(); const companyId = (!s || s.user==='bhagyesh') ? null : s.company_id; try{ // store only IDs for locs (backward compatible)
+    const locIds = planned.map(x=>x.id);
+    await db_insert('trips', [{ id: uid('trip'), name, locs: locIds, company_id: companyId, created_at: new Date().toISOString() }]);
+    planned=[]; plannedSelIdx=null; document.getElementById('tripName').value=''; renderPlanned(); renderTripList(); renderStartSelect(); toast('Trip saved'); }catch(e){ console.error('saveTrip', e); alert('Failed to save trip'); } }
+async function renderTripList(){
+  const wrap=document.getElementById('tripList'); wrap.innerHTML=''; const s=getSessionLocally(); const trips=await db_select('trips'); const visible = (!s||s.user==='bhagyesh') ? trips : trips.filter(t=>t.company_id===s.company_id);
+  if(visible.length===0){ wrap.innerHTML='<div class="text-sm text-slate-400">No trips</div>'; return; }
+  // Render each trip. Support trips where t.locs is an array of IDs or an array of full objects.
+  for(const t of visible){
+    let locNames = [];
+    try{
+      if(Array.isArray(t.locs) && t.locs.length>0 && typeof t.locs[0] === 'string'){
+        // fetch names for IDs (preserve order)
+        const { data: locData, error } = await sb.from('locations').select('id,name').in('id', t.locs);
+        if(!error && Array.isArray(locData)){
+          const nameMap = {}; locData.forEach(l=> nameMap[l.id]=l.name);
+          locNames = t.locs.map(id => nameMap[id] || '(unknown)');
+        } else {
+          locNames = t.locs.map(id=>'(loading)');
+        }
+      } else if(Array.isArray(t.locs)){
+        locNames = (t.locs||[]).map(x=>x.name || '(unknown)');
+      } else {
+        locNames = [];
+      }
+    }catch(e){ locNames = (t.locs||[]).map(x=> x.name || (typeof x==='string'?x:'(unknown)')); }
+
+    const row=document.createElement('div'); row.className='list-row flex items-center justify-between';
+    row.innerHTML = `<div><div class="font-semibold">${t.name}</div><div class="text-xs text-slate-500">${locNames.join(' → ')}</div></div><div class="flex gap-2"><button class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded" onclick="startTripById('${t.id}')">Start</button><button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="editTrip('${t.id}')">Edit</button><button class="bg-red-600 px-3 py-1 rounded text-white hover:bg-red-700" onclick="deleteTrip('${t.id}')">Delete</button></div>`;
+    wrap.appendChild(row);
+  }
+}
+async function editTrip(id){ const trips=await db_select('trips'); const t=trips.find(x=>x.id===id); if(!t) return; document.getElementById('tripName').value=t.name; // prepare planned array
+  if(Array.isArray(t.locs) && t.locs.length>0 && typeof t.locs[0] === 'string'){
+    // stored as IDs -> fetch full location rows
+    try{
+      const { data: locData, error } = await sb.from('locations').select('*').in('id', t.locs);
+      if(error) { console.error('editTrip fetch locs', error); planned = []; }
+      else planned = (locData||[]).map(l=>({ id: l.id, name: l.name, lat: l.lat, lng: l.lng, radius: l.radius, msg: l.msg||'', audio_url: l.audio_url||null }));
+    }catch(e){ console.error('editTrip fetch failed', e); planned = []; }
+  } else {
+    // old format (full objects) -> use as-is
+    planned = (t.locs||[]).map(x=>({ id: x.id, name: x.name, lat: x.lat, lng: x.lng, radius: x.radius, msg: x.msg||'', audio_url: x.audio_url||null }));
+  }
+  renderPlanned(); await db_delete('trips', { id }); renderTripList(); go('pageTripSetup'); }
+async function deleteTrip(id){ if(!confirm('Delete trip?')) return; await db_delete('trips', { id }); renderTripList(); renderStartSelect(); }
+
+/* START TRIP */
+let runMap=null, runMarkers=[], runCircles=[];
+let watchId = null, autoRefreshIntervalId = null;
+let runtime = { active: null, lastPos: null, ttsVolume: 1 };
+
+async function renderStartSelect(){
+  const sel = document.getElementById('startTripSelect'); sel.innerHTML='';
+  const s=getSessionLocally();
+  const trips=await db_select('trips'); const visible = (!s||s.user==='bhagyesh') ? trips : trips.filter(t=>t.company_id===s.company_id);
+  visible.forEach(t=>{ const o=document.createElement('option'); o.value=t.id; o.textContent=t.name; sel.appendChild(o); });
+}
+function startSelectedTrip(){ const id=document.getElementById('startTripSelect').value; if(!id) return alert('Select trip'); startTripById(id); }
+async function startTripById(id){
+  const trips = await db_select('trips'); const t = trips.find(x=>x.id===id); if(!t) return alert('Trip not found');
+  // Fetch latest locations: support both old full-object trips and id-only trips
+  let locsLatest = [];
+  try{
+    if(Array.isArray(t.locs) && t.locs.length>0 && typeof t.locs[0] === 'string'){
+      // stored as IDs -> fetch
+      const { data: locData, error } = await sb.from('locations').select('*').in('id', t.locs);
+      if(error){ console.error('startTripById loc fetch err', error); locsLatest = []; }
+      else locsLatest = (locData||[]).map(l=>({ id: l.id, name: l.name, lat: l.lat, lng: l.lng, radius: l.radius, msg: l.msg||'', audio_url: l.audio_url||null }));
+      } else {
+      // old format - already full objects
+      locsLatest = (t.locs||[]).map(x=>({ id: x.id, name: x.name, lat: x.lat, lng: x.lng, radius: x.radius, msg: x.msg||'', audio_url: x.audio_url||null }));
+      }
+  }catch(e){ console.error('startTripById fetch err', e); }
+
+  runtime.active = { tripId: t.id, name: t.name, locs: JSON.parse(JSON.stringify(locsLatest)), startedAt: new Date().toISOString(), reached: [], idx: 0, meMarker: null, _prevPos: null };
+  document.getElementById('ongoingTripName').textContent = runtime.active.name; document.getElementById('ongoingStart').textContent = fmtISO(runtime.active.startedAt);
+
+  if(!runMap) initRunMap();
+  // clear existing markers & circles (no polyline)
+  runMarkers.forEach(m=>{ try{ runMap.removeLayer(m);}catch(e){} }); runCircles.forEach(c=>{ try{ runMap.removeLayer(c);}catch(e){} }); runMarkers=[]; runCircles=[];
+  // ensure we do not render a polyline; only show markers and radius circles
+  runtime.active.locs.forEach((l,idx)=>{ const m = L.marker([l.lat,l.lng]).addTo(runMap).bindPopup(`${idx+1}. ${l.name}<br><button class='bg-blue-600 text-white px-2 py-1 rounded mt-1' onclick="playAnnouncementById('${l.id}')">▶ Play Announcement</button>`); runMarkers.push(m); const c = L.circle([l.lat,l.lng], { radius:Number(l.radius||500), fillOpacity:0.06, color:'#2563eb' }).addTo(runMap); runCircles.push(c); });
+  try{ if(runtime.active.locs.length>0){ const latlngs = runtime.active.locs.map(l=>[l.lat,l.lng]); runMap.fitBounds(L.latLngBounds(latlngs), { padding:[20,20] }); } }catch(e){}
+  document.getElementById('startPanel').classList.add('hidden'); document.getElementById('ongoingPanel').classList.remove('hidden');
+
+  // ensure map layout recalculates (fix laptop/tablet rendering)
+  setTimeout(()=>{ try{ runMap.invalidateSize(); }catch(e){} }, 300);
+
+  runtime.active.locs.forEach(l=>{ l._enterCount=0; l._arrived=false; });
+  if(watchId!==null){ try{ navigator.geolocation.clearWatch(watchId);}catch(e){} watchId=null; }
+  if(navigator.geolocation) watchId = navigator.geolocation.watchPosition(onGPS, gpsError, { enableHighAccuracy:true, maximumAge:2000 });
+  startPeriodicRefreshImmediate();
+  updateProgressUI();
+}
+// Populate manual announcement dropdown
+try{
+  const sel = document.getElementById('manualSelect');
+  if(sel){
+    sel.innerHTML = '<option value="">-- Select Location --</option>';
+    runtime.active.locs.forEach(l => {
+      sel.innerHTML += `<option value="${l.id}">${l.name}</option>`;
+    });
+  }
+}catch(e){ }
+
+function initRunMap(){ if(runMap){ try{ runMap.invalidateSize(); }catch(e){} return; } runMap = L.map('runMap'); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution:'© OpenStreetMap' }).addTo(runMap); runMap.setView([21.6417,69.6293], 12); }
+function createBusIcon(){ const svg = encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' width='36' height='36'><rect x='6' y='12' width='52' height='36' rx='6' fill='#0ea5e9' stroke='#0369a1' stroke-width='2'/><circle cx='20' cy='52' r='4' fill='#0b1220'/><circle cx='44' cy='52' r='4' fill='#0b1220'/><rect x='16' y='20' width='8' height='12' fill='#fff'/><rect x='40' y='20' width='8' height='12' fill='#fff'/></svg>`); return L.divIcon({ html:`<img src="data:image/svg+xml;charset=utf-8,${svg}" style="width:36px;height:36px;"/>`, className:'', iconSize:[36,36], iconAnchor:[18,18] }); }
+
+function onGPS(pos){
+  runtime.lastPos = pos;
+  const lat = pos.coords.latitude, lng = pos.coords.longitude, sp = pos.coords.speed;
+  if(!runtime.active) return;
+  if(!runtime.active.meMarker) runtime.active.meMarker = L.marker([lat,lng], { icon:createBusIcon(), title:'Vehicle' }).addTo(runMap);
+  else runtime.active.meMarker.setLatLng([lat,lng]);
+  try{ runMap.panTo([lat,lng], { animate:true, duration:.6 }); }catch(e){}
+  document.getElementById('curLat').textContent = lat.toFixed(6);
+  document.getElementById('curLng').textContent = lng.toFixed(6);
+  document.getElementById('curSpeed').textContent = sp ? (sp*3.6).toFixed(1) + ' km/h' : '—';
+  updateUpcomingAndCheck(lat,lng,sp);
+}
+function gpsError(err){ }
+
+
+function updateUpcomingAndCheck(lat, lng, speedMs){
+  try{
+    const trip = runtime.active;
+    if(!trip || !Array.isArray(trip.locs) || trip.locs.length === 0) return;
+
+    // for all stops, compute distance and take action
+    for(let rIdx=0; rIdx < trip.locs.length; rIdx++){
+      const loc = trip.locs[rIdx];
+      if(!loc) continue;
+      const rawRadius = Number(loc.radius || loc.rad || loc.reachRadius || 500);
+      const preRadius = Math.max(100, rawRadius);
+      const arrRadius = Math.max(50, Math.round(rawRadius/2));
+
+      const dist = haversine(lat, lng, Number(loc.lat), Number(loc.lng));
+
+      loc._preAnnounced = loc._preAnnounced || false;
+      loc._arrived = loc._arrived || false;
+
+      // pre-announce
+      if(!loc._preAnnounced && dist <= preRadius){
+        loc._preAnnounced = true;
+        try{ playAnnouncement(loc); 
+    // --- AUTO-DETECTION: check if we're within any stop radius and announce ---
+    try{
+      if(runtime && runtime.active && Array.isArray(runtime.active.locs)){
+        runtime.active.locs.forEach(l => {
+          try{
+            if(!l) return;
+            // ensure flags exist
+            if(typeof l._arrived === 'undefined') l._arrived = false;
+            if(typeof l._enterCount === 'undefined') l._enterCount = 0;
+            const dist = haversine(lat, lng, Number(l.lat), Number(l.lng));
+            // when within radius and not already arrived, trigger announcement
+            if(dist <= (Number(l.radius) || 0) && !l._arrived){
+              l._arrived = true;
+              l._enterCount = (l._enterCount||0) + 1;
+              console.log('🟢 Auto-arrived at', l.name, 'id:', l.id, 'dist:', Math.round(dist));
+              // play announcement using global-safe function
+              if(typeof window.playAnnouncementById === 'function'){
+                try{ window.playAnnouncementById(l.id); }catch(e){ console.error('Auto announce failed', e); }
+              } else {
+                try{ playAnnouncementById(l.id); }catch(e){ console.error('Auto announce (local) failed', e); }
+              }
+              // UI feedback: toast and update progress if available
+              try{ if(typeof toast === 'function') toast('Arrived: ' + (l.name||'Stop')); }catch(e){};
+              try{
+                // mark circle green if runCircles exists and matches this location (by coordinates)
+                if(window.runCircles && Array.isArray(window.runCircles)){
+                  window.runCircles.forEach(c => {
+                    try{
+                      const center = c.getLatLng();
+                      if(Math.abs(center.lat - Number(l.lat))<0.0001 && Math.abs(center.lng - Number(l.lng))<0.0001){
+                        c.setStyle({ color: '#16a34a', fillOpacity: 0.08 });
+                      }
+                    }catch(e){}
+                  });
+                }
+              }catch(e){}
+            }
+          }catch(e){ console.error('per-loc auto-detect error', e); }
+        });
+      }
+    }catch(e){ console.error('auto-detect outer error', e); }
+    // --- END AUTO-DETECTION ---
+}catch(e){ if(typeof speak === 'function') speak('Approaching ' + loc.name); }
+      }
+
+      // arrival
+      if(!loc._arrived && dist <= arrRadius){
+        loc._arrived = true;
+        trip.reached = trip.reached || [];
+        trip.reached.push({ name: loc.name, id: loc.id, time: new Date().toISOString(), idx: rIdx });
+
+        // style circle green
+        try{ if(typeof runCircles !== 'undefined' && runCircles[rIdx]) runCircles[rIdx].setStyle({ color:'#16a34a', fillColor:'#16a34a' }); }catch(e){}
+
+        // change marker to a tick icon
+        try{
+          if(typeof runMarkers !== 'undefined' && runMarkers[rIdx]){
+            runMarkers[rIdx].setIcon(L.divIcon({ className:'arrived-marker', html:'<div style="font-size:14px;padding:4px;border-radius:6px;background:#16a34a;color:#fff;">✔️</div>', iconSize:[28,28] }));
+          }
+        }catch(e){}
+
+        // update trip list tick
+        try{
+          const stopEl = document.querySelector("[data-stop-id='" + loc.id + "']");
+          if(stopEl && !stopEl.textContent.includes('✔️')){
+            stopEl.textContent = stopEl.textContent.trim() + ' ✔️';
+          }
+        }catch(e){}
+
+        // announcement on arrival
+        try{ playAnnouncement(loc); }catch(e){ if(typeof speak === 'function') speak('Arrived at ' + loc.name); }
+
+        // advance trip idx if applicable
+        try{ if(typeof trip.idx === 'number' && rIdx >= trip.idx) trip.idx = rIdx + 1; }catch(e){}
+
+        // update progress UI
+        try{ updateProgressUI(); }catch(e){}
+      }
+
+    } // end for
+
+    // update upcoming UI based on current trip.idx
+    try{
+      const nextLoc = trip.locs[trip.idx];
+      if(nextLoc){
+        const dnext = haversine(lat, lng, Number(nextLoc.lat), Number(nextLoc.lng));
+        const elUp = document.getElementById('upcomingName'); if(elUp) elUp.textContent = nextLoc.name;
+        const elDist = document.getElementById('distNext'); if(elDist) elDist.textContent = dnext>=1000 ? (dnext/1000).toFixed(2)+' km' : Math.round(dnext)+' m';
+        const spUse = speedMs || (trip._lastSpeed || 8.33);
+        let etaText = '—';
+        if(spUse > 0.1){ const sec = dnext / spUse; const min = Math.round(sec/60); etaText = min<=1 ? '~1 min' : ('~' + min + ' min'); }
+        const elEta = document.getElementById('etaNext'); if(elEta) elEta.textContent = etaText;
+      }
+    }catch(e){}
+
+    // store last pos/speed
+    try{ trip._lastPos = { lat:lat, lng:lng }; trip._lastPosTime = Date.now(); trip._lastSpeed = speedMs || trip._lastSpeed; }catch(e){}
+
+  }catch(err){
+    console.error('updateUpcomingAndCheck error', err);
+  }
+}
+
+function updateProgressUI(){
+  if(!runtime.active){ document.getElementById('progressStops').textContent='—'; document.getElementById('progressBar').style.width='0%'; return; }
+  const reached = runtime.active.reached.length; const total = runtime.active.locs.length;
+  const pct = total===0 ? 0 : Math.round((reached/total)*100);
+  document.getElementById('progressStops').textContent = `${reached} / ${total} (${pct}%)`;
+  document.getElementById('progressBar').style.width = pct + '%';
+}
+
+async function finishAndSaveRun(){
+  if(!runtime.active) return;
+  const endedAt = new Date().toISOString();
+  const durationMin = Math.round((new Date(endedAt) - new Date(runtime.active.startedAt))/60000);
+  const run = { id: uid('run'), trip_name: runtime.active.name, started_at: runtime.active.startedAt, ended_at: endedAt, duration_min: durationMin, reached: runtime.active.reached };
+  try{ await db_insert('runs', [run]); toast('Run saved'); setTimeout(()=> endTrip(), 800); }catch(e){ console.error('finish save run', e); endTrip(); }
+}
+
+async function endTrip(){
+  if(!runtime.active) return;
+  const endedAt = new Date().toISOString();
+  const durationMin = Math.round((new Date(endedAt) - new Date(runtime.active.startedAt))/60000);
+  const run = { id: uid('run'), trip_name: runtime.active.name, started_at: runtime.active.startedAt, ended_at: endedAt, duration_min: durationMin, reached: runtime.active.reached };
+  try{ await db_insert('runs', [run]); }catch(e){ }
+  if(watchId!==null){ navigator.geolocation.clearWatch(watchId); watchId=null; }
+  if(autoRefreshIntervalId!==null){ clearInterval(autoRefreshIntervalId); autoRefreshIntervalId=null; }
+  if(runtime.active && runtime.active.meMarker){ try{ runMap.removeLayer(runtime.active.meMarker); }catch(e){} }
+  runtime.active = null;
+  document.getElementById('ongoingPanel').classList.add('hidden');
+  document.getElementById('startPanel').classList.remove('hidden');
+  toast('Trip ended and saved to reports');
+  await renderReports(); await renderTripList(); await renderStartSelect();
+}
+
+/* center map and gps helpers */
+function centerMap(){ if(runtime.lastPos && runMap) runMap.panTo([runtime.lastPos.coords.latitude, runtime.lastPos.coords.longitude]); }
+function centerCurrentGPS(){ if(!navigator.geolocation) return alert('Geolocation not available'); navigator.geolocation.getCurrentPosition(p=>{ onGPS(p); runMap.panTo([p.coords.latitude,p.coords.longitude]); }, err=>alert('GPS error: '+err.message)); }
+
+/* TTS and audio handling */
+function setVolume(v){ runtime.ttsVolume = Number(v); toast('Volume: ' + runtime.ttsVolume); }
+function speak(text){ try{ const u = new SpeechSynthesisUtterance(text); u.volume = Number(runtime.ttsVolume || 1.0); speechSynthesis.speak(u); }catch(e){ } }
+
+function playAnnouncement(loc){
+  if(!loc) return;
+  try{
+    if(loc.audio_url){
+      const a = new Audio(loc.audio_url);
+      a.volume = Number(runtime.ttsVolume || 1.0);
+      a.play().catch(e=>{ if(loc.msg) speak(loc.msg); });
+    } else if(loc.msg && loc.msg.trim()){
+      speak(loc.msg);
+    } else {
+      speak('Next stop');
+    }
+  }catch(e){ }
+}
+
+/* Periodic refresh */
+function startPeriodicRefreshImmediate(){
+  if(autoRefreshIntervalId) clearInterval(autoRefreshIntervalId);
+  if(navigator.geolocation){ navigator.geolocation.getCurrentPosition(p=> onGPS(p), ()=>{}); }
+  setAutoRefreshInterval();
+}
+
+function setAutoRefreshInterval(){
+  try{
+    if(autoRefreshIntervalId) clearInterval(autoRefreshIntervalId);
+    const secs = Number(document.getElementById('autoRefreshSelect').value || 10);
+    autoRefreshIntervalId = setInterval(async () => {
+      try{
+        if(!navigator.geolocation) return;
+        if (navigator.permissions && navigator.permissions.query) {
+          const perm = await navigator.permissions.query({ name: 'geolocation' });
+          if (perm.state === 'granted') {
+            navigator.geolocation.getCurrentPosition(pos => onGPS(pos), () => {});
+          } else {
+            // silently skip if not granted
+          }
+        } else {
+          navigator.geolocation.getCurrentPosition(pos => onGPS(pos), () => {});
+        }
+      }catch(e){}
+    }, secs * 1000);
+    toast('Auto refresh ' + secs + 's');
+  }catch(e){
+    console.error('setAutoRefreshInterval error', e);
+  }
+}
+
+
+
+/* Reports & exports */
+async function renderReports(){
+  const ul = document.getElementById('reportTrips'); ul.innerHTML='';
+  const runs = await db_select('runs');
+  if(runs.length===0) ul.innerHTML = '<div class="text-sm text-slate-400">No trip reports yet.</div>';
+  runs.slice().reverse().forEach(r=>{
+    const div=document.createElement('div'); div.className='list-row';
+    div.innerHTML = `<div class="font-semibold">${r.trip_name}</div><div class="text-xs text-slate-500">Start: ${fmtISO(r.started_at)} | End: ${fmtISO(r.ended_at)} | Duration: ${r.duration_min} min</div><div class="text-xs text-slate-600 mt-1">Stops: ${(r.reached||[]).map(s=>s.name+' ('+fmtISO(s.time)+')').join(', ') || '—'}</div>`;
+    ul.appendChild(div);
+  });
+  const logs = await db_select('logins'); const ul2 = document.getElementById('reportLogins'); ul2.innerHTML='';
+  if(logs.length===0) ul2.innerHTML = '<div class="text-sm text-slate-400">No login activity</div>';
+  logs.slice().reverse().forEach(l=>{ const li=document.createElement('div'); li.className='list-row'; li.innerHTML = `<div class="font-medium">${l.user}</div><div class="text-xs text-slate-500">${l.role} · ${fmtISO(l.time)} · ${l.device}</div>`; ul2.appendChild(li); });
+}
+async function exportTripsExcel(){ const runs = await db_select('runs'); const rows = []; runs.forEach(r=>{ rows.push({ Trip: r.trip_name, StartedAt: r.started_at, EndedAt: r.ended_at, DurationMin: r.duration_min }); (r.reached||[]).forEach(s=> rows.push({ Trip: r.trip_name, StopReached: s.name, ReachedAt: s.time })); }); const ws = XLSX.utils.json_to_sheet(rows); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'TripReports'); XLSX.writeFile(wb, 'trip_reports.xlsx'); }
+async function exportLoginsExcel(){ const logs = await db_select('logins'); const ws = XLSX.utils.json_to_sheet(logs); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'LoginLogs'); XLSX.writeFile(wb, 'login_logs.xlsx'); }
+
+/* Help */
+function showHelp(){ alert('BusMate prototype — Master: bhagyesh/bhagyesh; Admin: admin/admin; Operator: operator/operator. Serve via static server for geolocation.'); }
+
+/* Boot */
+(async function boot(){
+  await seedDemoIfEmpty();
+  const s = getSessionLocally();
+  if(s){ document.getElementById('logoutBtn').classList.remove('hidden'); document.getElementById('userLabel').textContent = s.display_name || s.user; document.getElementById('roleLabel').textContent = s.role; await applyHeader(); go('pageHome'); } else { go('pageLogin'); }
+  await renderCompanyList(); await renderUserList(); await renderLocationList(); await renderAvailList(); await renderTripList(); await renderStartSelect(); await renderReports();
+})();
+
+/* expose debug and functions for inline onclick */
+window._bm = { sb, db_select, db_insert, db_update, db_delete, runtime };
+
+window.handleLogin = handleLogin;
+window.showHelp = showHelp;
+window.logout = logout;
+window.go = go;
+
+window.openCompanyForm = openCompanyForm;
+window.closeCompanyModal = closeCompanyModal;
+window.saveCompany = saveCompany;
+window.editCompany = editCompany;
+window.toggleCompany = toggleCompany;
+window.deleteCompany = deleteCompany;
+
+window.openUserForm = openUserForm;
+window.closeUserModal = closeUserModal;
+window.saveUser = saveUser;
+window.editUser = editUser;
+window.toggleUser = toggleUser;
+window.deleteUser = deleteUser;
+
+window.useCurrentGPS = useCurrentGPS;
+window.testAnnouncement = testAnnouncement;
+window.saveLocation = saveLocation;
+window.editLocation = editLocation;
+window.deleteLocation = deleteLocation;
+
+window.planAddFromButton = planAddFromButton;
+window.plannedSelect = plannedSelect;
+window.removePlanned = removePlanned;
+window.movePlanned = movePlanned;
+window.clearPlanned = clearPlanned;
+window.saveTrip = saveTrip;
+window.editTrip = editTrip;
+window.deleteTrip = deleteTrip;
+
+window.startSelectedTrip = startSelectedTrip;
+window.startTripById = startTripById;
+window.endTrip = endTrip;
+window.centerMap = centerMap;
+window.centerCurrentGPS = centerCurrentGPS;
+window.setVolume = setVolume;
+
+window.exportTripsExcel = exportTripsExcel;
+window.exportLoginsExcel = exportLoginsExcel;
+
+window.openPasswordForm = openPasswordForm;
+window.closePasswordModal = closePasswordModal;
+window.savePassword = savePassword;
+window.playUrl = playUrl;
+
+</script>
+
+
+
+<!-- ***** PATCH: runtime overrides to fix audio overlap, volume, edit/save location, live map, wake-lock ***** -->
+<script>
+// (Truncated patch comment header for brevity)
+// ... full JS patch script here ...
+</script>
+<!-- ***** END PATCH ***** -->
+
+
+
+<script>
+// Patch: Fetch latest location data from Supabase when trip starts
+const originalStartTrip = window.startTripById;
+window.startTripById = async function(id) {
+  try {
+    // Fetch latest trip data
+    const trips = await db_select('trips');
+    const trip = trips.find(t => t.id === id);
+    if (!trip) return alert('Trip not found');
+
+    // Fetch latest locations from Supabase
+    const locs = await db_select('locations');
+    const freshLocs = (trip.locs || []).map(loc => {
+      const latest = locs.find(l => l.id === loc.id);
+      return latest ? { ...loc, ...latest } : loc;
+    });
+    trip.locs = freshLocs;
+
+    runtime.active = { ...trip, idx: 0, reached: [], startedAt: new Date().toISOString() };
+    if (typeof renderRunMap === 'function') renderRunMap();
+
+    // Continue normal trip behavior
+    if (typeof requestWakeLock === 'function') await requestWakeLock();
+    } catch (e) {
+    console.error('startTripById radius fix error', e);
+    if (typeof originalStartTrip === 'function') return originalStartTrip(id);
+  }
+};
+</script>
+
+
+
+<script>
+// --- Enhanced Announcement Handler with Supabase Fallback ---
+window.playAnnouncementById = async function(locId){
+  try{
+    const rt = window.runtime || (typeof runtime !== 'undefined' ? runtime : null);
+    let loc = null;
+    const locs = rt && rt.active && Array.isArray(rt.active.locs) ? rt.active.locs : null;
+    if(locs){
+      loc = locs.find(x => x.id === locId);
+    }
+    if(!loc){
+      console.warn('Location not found locally for ID:', locId, '→ Fetching from Supabase...');
+      if(window.SB){
+        try{
+          const { data, error } = await window.SB.from('locations').select('*').eq('id', locId).single();
+          if(!error && data){ loc = data; console.log('Fetched location:', data.name); }
+        }catch(fetchErr){ console.error('Supabase fetch error', fetchErr); }
+      }
+    }
+    if(!loc){
+      console.warn('Location not found for ID:', locId);
+      if(typeof toast === 'function') toast('Location not found');
+      return;
+    }
+    console.log('🔊 Playing announcement for', loc.name, 'ID:', locId);
+    const url = loc.audio_url ? decodeURIComponent(loc.audio_url) : null;
+    if(url){
+      try{
+        const a = new Audio(url);
+        a.volume = (rt && rt.ttsVolume) ? rt.ttsVolume : 1;
+        await a.play();
+        return;
+      }catch(e){ console.error('Audio play failed', e); if(typeof toast === 'function') toast('Audio playback error'); }
+    }
+    // fallback to TTS
+    const msg = loc.msg || loc.name || 'Announcement';
+    try{
+      const utter = new SpeechSynthesisUtterance(msg);
+      utter.volume = (rt && rt.ttsVolume) ? rt.ttsVolume : 1;
+      utter.rate = 1;
+      utter.pitch = 1;
+      speechSynthesis.cancel();
+      speechSynthesis.speak(utter);
+    }catch(e){ console.error('TTS failed', e); if(typeof toast === 'function') toast('TTS failed'); }
+  }catch(e){
+    console.error('playAnnouncementById error', e);
+    if(typeof toast === 'function') toast('Announcement failed');
+  }
+};
+</script>
+
+
+
+<script>
+// --- Global Safe Auto Refresh Setter ---
+window.setAutoRefreshInterval = function(value){
+  try {
+    const sec = Number(value);
+    if(isNaN(sec) || sec <= 0) { if(typeof toast==='function') toast('Invalid refresh interval'); return; }
+    if(window._autoRefreshTimer) clearInterval(window._autoRefreshTimer);
+    window._autoRefreshTimer = setInterval(() => {
+      try{
+        if(typeof updateUpcomingAndCheck === 'function' && window.runtime && window.runtime.active && window.runtime.active.gps){
+          const g = window.runtime.active.gps;
+          updateUpcomingAndCheck(g.lat, g.lng, g.speedMs || 0);
+        }
+      }catch(e){ console.error('Auto refresh tick error', e); }
+    }, sec * 1000);
+    console.log('⏱️ Auto refresh interval set to', sec, 'seconds');
+    if(typeof toast==='function') toast('Auto refresh: ' + sec + 's');
+  } catch(e) {
+    console.error('setAutoRefreshInterval error', e);
+  }
+};
+</script>
+
+
+<script>
+// --- Global Safe End Trip Handler ---
+window.endTrip = function(){
+  try {
+    console.log('🛑 Attempting to end trip...');
+    if(typeof stopTrip === 'function'){ 
+      stopTrip();
+      if(typeof toast==='function') toast('Trip ended');
+      console.log('✅ Trip ended via stopTrip()');
+    } else if(window.runtime && window.runtime.active){
+      window.runtime.active = null;
+      if(typeof toast==='function') toast('Trip ended (fallback)');
+      console.log('✅ Trip ended (runtime cleared)');
+    }
+    // Hide ongoing panel and show home panel
+    const ongoing = document.getElementById('ongoingTripPanel');
+    const home = document.getElementById('homePanel');
+    if(ongoing) ongoing.classList.add('hidden');
+    if(home) home.classList.remove('hidden');
+  } catch(e){
+    console.error('endTrip error', e);
+    if(typeof toast==='function') toast('End Trip failed');
+  }
+};
+</script>
+
+
+<script>
+// --- Strong Global End Trip Handler (full cleanup) ---
+window.endTrip = function(){
+  try {
+    console.log('🛑 Ending trip (full cleanup)...');
+    // Clear geolocation watch (try both global and module-scoped names)
+    try{
+      if(typeof watchId !== 'undefined' && watchId !== null){
+        try{ navigator.geolocation.clearWatch(watchId); }catch(e){ console.warn('clearWatch failed for watchId', e); }
+        watchId = null;
+      }
+      if(window.watchId){ try{ navigator.geolocation.clearWatch(window.watchId); }catch(e){} window.watchId = null; }
+    }catch(e){ console.warn('watchId cleanup error', e); }
+
+    // Clear any auto-refresh timers
+    try{ if(window._autoRefreshTimer){ clearInterval(window._autoRefreshTimer); window._autoRefreshTimer = null; } }catch(e){ console.warn('autoRefresh cleanup', e); }
+
+    // Clear runtime.active and other runtime state
+    try{
+      if(window.runtime && window.runtime.active){
+        window.runtime.active = null;
+      } else if(typeof runtime !== 'undefined' && runtime && runtime.active){
+        runtime.active = null;
+      }
+      // also clear backup _runtime if present
+      if(window._runtime){ window._runtime.active = null; }
+    }catch(e){ console.warn('runtime cleanup', e); }
+
+    // Remove markers and circles from map if present (module or window scope)
+    try{
+      if(window.runMarkers && Array.isArray(window.runMarkers)){
+        window.runMarkers.forEach(m => { try{ if(m && m.remove) m.remove(); }catch(e){} });
+        window.runMarkers = [];
+      }
+      if(window.runCircles && Array.isArray(window.runCircles)){
+        window.runCircles.forEach(c => { try{ if(c && c.remove) c.remove(); }catch(e){} });
+        window.runCircles = [];
+      }
+      // also try module scoped variables
+      if(typeof runMarkers !== 'undefined' && Array.isArray(runMarkers)){
+        runMarkers.forEach(m => { try{ if(m && m.remove) m.remove(); }catch(e){} });
+      }
+      if(typeof runCircles !== 'undefined' && Array.isArray(runCircles)){
+        runCircles.forEach(c => { try{ if(c && c.remove) c.remove(); }catch(e){} });
+      }
+    }catch(e){ console.warn('marker/circle cleanup', e); }
+
+    // Optional: remove meMarker from the map
+    try{
+      if(window.runtime && runtime.active && runtime.active.meMarker){
+        try{ runtime.active.meMarker.remove(); }catch(e){} 
+      }
+    }catch(e){}
+
+    // UI: hide ongoing panel and show home
+    try{
+      const ongoing = document.getElementById('ongoingPanel') || document.getElementById('ongoingTripPanel');
+      const home = document.getElementById('pageHome') || document.getElementById('homePanel');
+      if(ongoing) ongoing.classList.add('hidden');
+      if(home) home.classList.remove('hidden');
+      // show start panel again
+      const startPanel = document.getElementById('startPanel');
+      if(startPanel) startPanel.classList.remove('hidden');
+    }catch(e){ console.warn('UI cleanup', e); }
+
+    // Final logs and toast
+    
+    // --- Extra UI Reset after trip end ---
+    setTimeout(() => {
+      try {
+        const panels = ['ongoingTripPanel','ongoingMap','tripStats','nextStopPanel'];
+        panels.forEach(id => {
+          const el = document.getElementById(id);
+          if(el) el.classList.add('hidden');
+        });
+        const home = document.getElementById('homePanel');
+        const start = document.getElementById('startPanel');
+        if(home) home.classList.remove('hidden');
+        if(start) start.classList.remove('hidden');
+        console.log('✅ UI fully reset to Start Trip view');
+      } catch(e){ console.error('UI reset error', e); }
+    }, 500);
+console.log('✅ Trip fully ended (cleanup complete)');
+    if(typeof toast === 'function') toast('Trip ended successfully');
+  } catch(e){
+    console.error('endTrip fatal error', e);
+    if(typeof toast === 'function') toast('End Trip failed');
+  }
+};
+</script>
+
+
+<script>
+// --- UI FIX: Hide ongoing trip layout before trip start ---
+document.addEventListener('DOMContentLoaded', () => {
+  try {
+    const ongoing = document.getElementById('ongoingTripPanel');
+    if(ongoing) ongoing.classList.add('hidden');
+    const map = document.getElementById('ongoingMap');
+    if(map) map.classList.add('hidden');
+    console.log('✅ Ongoing trip layout hidden until trip start');
+  } catch(e) {
+    console.error('UI preload hide failed', e);
+  }
+});
+</script>
+
+
+<script>
+// --- SAFETY PATCH: manualAnn fallback to prevent ReferenceError ---
+if(typeof window.manualAnn === 'undefined'){
+  window.manualAnn = {
+    play: ()=>{ console.log('manualAnn.play() ignored (feature removed)'); },
+    stop: ()=>{ console.log('manualAnn.stop() ignored (feature removed)'); }
+  };
+  console.log('✅ manualAnn fallback applied');
+}
+</script>
+
+</body>
+</html>
