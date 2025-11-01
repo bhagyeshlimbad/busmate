@@ -3,7 +3,7 @@
 🚌 SHREE RAMKRUPA TRAVELS - BUSMATE WEB APPLICATION (index_fixed_final.html)
 ====================================================================================
 Version: Final Production Build
-Author: Bhagyesh Limbad & ChatGPT GPT-5
+Author: Bhagyesh Limbad 
 
 🔧 Functional Summary:
 - Full Supabase integration (no localStorage)
@@ -48,28 +48,102 @@ Author: Bhagyesh Limbad & ChatGPT GPT-5
 
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com">
+
+// --- Announcement: configurable cooldown & single-play guard ---
+const ANNOUNCEMENT_COOLDOWN_MS = 10000; // <-- edit this value (milliseconds)
+
+let _lastAnnouncedId = null;
+let _lastAnnouncedAt = 0;
+let _currentAudio = null;
+
+function markLocationArrived(locId){
+  try{
+    if(!runtime || !runtime.active || !Array.isArray(runtime.active.locs)) return;
+    const idx = runtime.active.locs.findIndex(l => l.id === locId);
+    if(idx === -1) return;
+    const loc = runtime.active.locs[idx];
+    // prevent repeated visual update
+    if(loc._arrived) return;
+    loc._arrived = true;
+
+    // circle and marker arrays correspond to runtime.active.locs order
+    try{
+      const circle = (typeof runCircles !== 'undefined' && runCircles[idx]) ? runCircles[idx] : null;
+      const marker = (typeof runMarkers !== 'undefined' && runMarkers[idx]) ? runMarkers[idx] : null;
+      if(circle && typeof circle.setStyle === 'function'){
+        circle.setStyle({ color:'#16a34a', fillColor:'#16a34a' });
+      }
+      // add emoji overlay marker if not added
+      if(!loc._emojiMarker && typeof L !== 'undefined' && typeof runMap !== 'undefined'){
+        const icon = L.divIcon({ className:'emoji-marker', html:'<div style=\"font-size:20px;line-height:20px\">✅</div>', iconSize:[24,24], iconAnchor:[12,12] });
+        try{
+          const em = L.marker([loc.lat, loc.lng], { icon }).addTo(runMap);
+          loc._emojiMarker = em;
+        }catch(e){ console.error('emoji add failed', e); }
+      }
+      // append "✅ Arrived" to popup content (idempotent)
+      if(marker && typeof marker.bindPopup === 'function'){
+        try{
+          const prev = marker.getPopup ? (marker.getPopup() ? marker.getPopup().getContent() : '') : '';
+          if(!/✅ Arrived/.test(prev)){
+            const newContent = (prev||'') + '<div class=\"mt-1 font-semibold\">✅ Arrived</div>';
+            marker.bindPopup(newContent);
+          }
+        }catch(e){ console.error('popup update failed', e); }
+      }
+    }catch(e){ console.error('markLocationArrived inner error', e); }
+  }catch(e){ console.error('markLocationArrived error', e); }
+}
+
 function playAnnouncementById(locId){
   try{
-    const loc = (runtime.active && runtime.active.locs) ? runtime.active.locs.find(x => x.id === locId) : null;
+    const now = Date.now();
+    // debounce: prevent same announcement within configured cooldown
+    if(_lastAnnouncedId === locId && (now - _lastAnnouncedAt) < ANNOUNCEMENT_COOLDOWN_MS){
+      console.log('⏸️ Skipped overlapping announcement for', locId);
+      return;
+    }
+    _lastAnnouncedId = locId;
+    _lastAnnouncedAt = now;
+
+    const loc = (runtime && runtime.active && runtime.active.locs) ? runtime.active.locs.find(x=>x.id===locId) : null;
     if(!loc){ console.warn('Location not found for ID:', locId); toast('Location not found'); return; }
+
+    // stop any currently playing audio or TTS
+    try{ if(_currentAudio){ _currentAudio.pause(); _currentAudio.src=''; _currentAudio = null; } }catch(e){}
+    try{ speechSynthesis.cancel(); }catch(e){}
+
     console.log('🔊 Playing announcement for', loc.name, 'ID:', locId);
     if(loc.audio_url){
-      const a = new Audio(loc.audio_url);
-      a.volume = runtime.ttsVolume || 1;
-      a.play().catch(err => { console.error('Audio play failed', err); toast('Audio playback error'); });
+      _currentAudio = new Audio(loc.audio_url);
+      _currentAudio.volume = (runtime && runtime.ttsVolume) ? runtime.ttsVolume : 1;
+      _currentAudio.play().catch(err=>{
+        console.error('Audio play failed', err);
+        toast('Audio playback error');
+        _currentAudio = null;
+      });
+      _currentAudio.addEventListener('ended', ()=>{
+        _currentAudio = null;
+      });
     } else {
       const msg = loc.msg || loc.name || 'Announcement';
       const utter = new SpeechSynthesisUtterance(msg);
-      utter.volume = runtime.ttsVolume || 1;
+      utter.volume = (runtime && runtime.ttsVolume) ? runtime.ttsVolume : 1;
       utter.rate = 1;
       utter.pitch = 1;
+      utter.onend = function(){ _currentAudio = null; };
       speechSynthesis.speak(utter);
     }
+
+    // Visual: mark as arrived (turn circle green + add ✅ overlay + update popup)
+    try{ markLocationArrived(locId); }catch(e){ console.error('markLocationArrived failed', e); }
+
   }catch(e){
     console.error('playAnnouncementById error', e);
     toast('Announcement failed');
   }
 }
+window.playAnnouncementById = playAnnouncementById;
 
 
 window.playAnnouncementFromPopup = function(btn){
