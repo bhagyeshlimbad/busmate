@@ -2570,11 +2570,12 @@ async function loadMyRequests(){
   /* -----------------------------
    Load My Fuel Requests
 ----------------------------- */
-  const s = typeof getSessionLocally === 'function' ? getSessionLocally() : null;
+const s = typeof getSessionLocally === 'function' ? getSessionLocally() : null;
   if (!s) return alert("Please log in first");
 
   const loginUser = (s.display_name || s.user || s.email || "").trim().toLowerCase();
-  console.log("🔑 Logged in user:", loginUser);
+  const shortKey = loginUser.charAt(0);
+  console.log("🔑 Logged in user:", loginUser, "| short key:", shortKey);
 
   const page = document.getElementById("pageMyRequests");
   if (!page) return console.warn("pageMyRequests not found");
@@ -2589,11 +2590,13 @@ async function loadMyRequests(){
         <thead>
           <tr class="bg-slate-100 text-left">
             <th class="px-3 py-2 border">#</th>
+            <th class="px-3 py-2 border">Request No.</th>
             <th class="px-3 py-2 border">Date</th>
             <th class="px-3 py-2 border">Vehicle</th>
             <th class="px-3 py-2 border">Odometer</th>
             <th class="px-3 py-2 border">Vendor</th>
             <th class="px-3 py-2 border">Status</th>
+            <th class="px-3 py-2 border">Remarks</th>
             <th class="px-3 py-2 border text-center">Actions</th>
           </tr>
         </thead>
@@ -2603,51 +2606,60 @@ async function loadMyRequests(){
   `;
 
   const tbody = page.querySelector("#myReqBody");
-  tbody.innerHTML = `<tr><td colspan="7" class="text-center py-3 text-slate-400">Loading…</td></tr>`;
+  tbody.innerHTML = `<tr><td colspan="9" class="text-center py-3 text-slate-400">Loading…</td></tr>`;
 
   try {
-    if (typeof SB === "undefined" || !SB) throw new Error("Supabase client SB not initialized");
+    if (typeof SB === 'undefined' || !SB) throw new Error("Supabase client SB not initialized");
 
-    // ✅ Load all requests first (since user column may differ)
-    const { data: allReqs, error } = await SB.from("fuel_requests").select("*").order("created_at", { ascending: false });
+    // ✅ Step 1: Load likely matching rows (by first letter)
+    const { data: rawReqs, error } = await SB
+      .from("fuel_requests")
+      .select("*")
+      .ilike("created_by", `${shortKey}%`)
+      .order("created_at", { ascending: false });
+
     if (error) throw error;
 
-    console.log("🧾 All requests from DB:", allReqs);
+    console.log("🧾 Raw fetched rows:", rawReqs?.length || 0);
 
-    // ✅ Match records if created_by includes or equals the logged-in user (case-insensitive)
-    const myReqs = (allReqs || []).filter(r => {
+    // ✅ Step 2: Case-insensitive trim-safe match in JS
+    const myReqs = (rawReqs || []).filter(r => {
       const createdBy = (r.created_by || "").trim().toLowerCase();
-      return createdBy === loginUser || createdBy.startsWith(loginUser) || loginUser.startsWith(createdBy);
+      return (
+        createdBy === loginUser ||
+        createdBy.startsWith(loginUser) ||
+        loginUser.startsWith(createdBy)
+      );
     });
 
-    console.log(`✅ Requests visible for user '${loginUser}':`, myReqs);
+    console.log(`✅ Filtered requests for '${loginUser}':`, myReqs);
 
-    // ✅ Load vendor & vehicle names
+    // ✅ Load vendor & vehicle info
     const [vendorsRes, vehiclesRes] = await Promise.all([
       SB.from("vendors").select("*"),
       SB.from("vehicles").select("*")
     ]);
-
     const vendors = vendorsRes.data || [];
     const vehicles = vehiclesRes.data || [];
 
     tbody.innerHTML = "";
 
-    if (myReqs.length === 0) {
+    if (!myReqs || myReqs.length === 0) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="7" class="text-center py-3 text-slate-500">
+          <td colspan="9" class="text-center py-3 text-slate-500">
             No fuel requests found for <b>${loginUser}</b>.
           </td>
         </tr>`;
       return;
     }
 
-    // ✅ Render table
+    // ✅ Step 3: Render rows
     myReqs.forEach((req, i) => {
       const vendor = vendors.find(v => v.id === req.vendor_id);
       const vehicle = vehicles.find(v => v.id === req.vehicle_id);
       const status = req.status || "—";
+      const remarks = req.remarks || req.remark || "—";
       const canEdit = ["pending", "pending review"].includes(status.toLowerCase());
       const dateText = req.created_at ? new Date(req.created_at).toLocaleDateString() : "—";
 
@@ -2655,11 +2667,13 @@ async function loadMyRequests(){
       tr.className = "border-b hover:bg-slate-50";
       tr.innerHTML = `
         <td class="px-3 py-2 border text-center">${i + 1}</td>
+        <td class="px-3 py-2 border">${req.id}</td>
         <td class="px-3 py-2 border">${dateText}</td>
         <td class="px-3 py-2 border">${vehicle ? vehicle.name : "—"}</td>
         <td class="px-3 py-2 border">${req.odometer || "—"}</td>
         <td class="px-3 py-2 border">${vendor ? vendor.name : "—"}</td>
         <td class="px-3 py-2 border">${status}</td>
+        <td class="px-3 py-2 border">${remarks}</td>
         <td class="px-3 py-2 border text-center">
           ${
             canEdit
@@ -2673,7 +2687,7 @@ async function loadMyRequests(){
 
   } catch (err) {
     console.error("❌ loadMyRequests error:", err);
-    tbody.innerHTML = `<tr><td colspan="7" class="text-center py-3 text-red-500">Error loading requests: ${err.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" class="text-center py-3 text-red-500">Error loading requests: ${err.message}</td></tr>`;
   }
 }
 
@@ -2700,61 +2714,6 @@ async function editFuelRequest(id) {
   }
 }
 
-  // const s = getSessionLocally();
-  // if(!s){
-  //   alert('Session expired, please log in again.');
-  //   return;
-  // }
-
-  // console.log('🔍 Logged in user:', s.user);
-  // console.log('🔍 Fetching requests for user:', s.user);
-  // const userKey = s.user.toLowerCase();
-  // const { data: requests, error } = await SB
-  //   .from('fuel_requests')
-  //   .select('id, created_at, vehicle_id, vendor_id, status, created_by')
-  //   .or(`created_by.eq.${userKey},created_by.eq.${s.user}`)
-  //   .order('created_at', { ascending: false });
-
-  // if(error){
-  //   console.error('Failed to load requests:', error);
-  //   alert('❌ Could not load requests.');
-  //   return;
-  // }
-
-  // const { data: vehicles } = await SB.from('vehicles').select('id, name');
-  // const { data: vendors } = await SB.from('vendors').select('id, name');
-
-  // const getVehicleName = id => vehicles.find(v => v.id === id)?.name || '-';
-  // const getVendorName = id => vendors.find(v => v.id === id)?.name || '-';
-
-  // const tbody = document.getElementById('myRequestsTable');
-  // tbody.innerHTML = '';
-
-  // if(!requests.length){
-  //   tbody.innerHTML = `<tr><td colspan="6" class="text-center p-3 text-gray-500">
-  //     No requests found for <b>${s.user}</b>.
-  //   </td></tr>`;
-  //   return;
-  // }
-
-  // requests.forEach((r, i)=>{
-  //   const canEdit = r.status === 'Pending Review';
-  //   tbody.innerHTML += `
-  //     <tr class="border hover:bg-gray-50">
-  //       <td class="border p-2 text-center">${i+1}</td>
-  //       <td class="border p-2">${new Date(r.created_at).toLocaleDateString()}</td>
-  //       <td class="border p-2">${getVehicleName(r.vehicle_id)}</td>
-  //       <td class="border p-2">${getVendorName(r.vendor_id)}</td>
-  //       <td class="border p-2 text-center">${r.status}</td>
-  //       <td class="border p-2 text-center">
-  //         ${canEdit 
-  //           ? `<button onclick="editFuelRequest(${r.id})" class="text-blue-600 hover:underline">Edit</button>` 
-  //           : `<span class="text-gray-400">Locked</span>`
-  //         }
-  //       </td>
-  //     </tr>
-  //   `;
-  // });
 
 async function editFuelRequest(id){
   const { data, error } = await SB.from('fuel_requests').select('*').eq('id', id).single();
@@ -2780,266 +2739,3 @@ async function editFuelRequest(id){
 
 
 </body></html>
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
-<!-- padding line for 2k requirement -->
