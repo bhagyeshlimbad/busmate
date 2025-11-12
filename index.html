@@ -858,6 +858,8 @@ function go(pageId){
   if(pageId==='pageFuelRequest'){ loadFuelRequestForm(); } // its load after open fuel request page
   if(pageId==='pageVendors'){renderVendorList(),renderVehicleList();} // its loads vendor/vehicle in asset
   if(pageId==='pageMyRequests'){loadMyRequests()}
+  if (pageId === 'pageFuelApprovals') { renderFuelApprovals(); }
+
 }
 
 /* Company CRUD */
@@ -2506,9 +2508,6 @@ function toBase64(file){
 </script>
 
 
-
-
-
 <script>
 let userLat = null;
 let userLng = null;
@@ -2730,11 +2729,231 @@ async function editFuelRequest(id){
   document.getElementById('consumptionInput').value = data.consumption_unit;
   document.getElementById('totalInput').value = (data.rate_per_unit * data.consumption_unit).toFixed(2);
   document.getElementById('odometerInput').value = data.odometer;
-  document.getElementById('remarkInput').value = data.remark;
+  document.getElementById('remarkInput').value = data.remark;  
 
   go('pageFuelRequest');
   alert('You can now edit and re-submit this fuel request.');
 }
+// /* ---------------------------------------------------------
+//    Approvals page — auto-creates section if missing + handlers
+//    Paste after your SB client and DB helpers (db_update/db_select/db_insert)
+// --------------------------------------------------------- */
+
+function ensureApprovalsSection() {
+  let sec = document.getElementById("pageFuelApprovals");
+  if (sec) return sec;
+  sec = document.createElement("section");
+  sec.id = "pageFuelApprovals";
+  sec.className = "hidden";
+  document.querySelector("main")?.appendChild(sec);
+  return sec;
+}
+
+/* Convert base64 string into data URL */
+function base64ToDataUrl(b64) {
+  if (!b64) return null;
+  const s = String(b64).trim();
+  return s.startsWith("data:") ? s : "data:image/jpeg;base64," + s;
+}
+
+/* Escape unsafe HTML */
+function escapeHtml(str) {
+  if (str === undefined || str === null) return "";
+  return String(str)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+/* Modal image zoom */
+function showImageFullscreen(src) {
+  const overlay = document.createElement("div");
+  overlay.className =
+    "fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 cursor-zoom-out";
+  overlay.innerHTML = `
+    <img src="${src}" class="max-h-[95vh] max-w-[95vw] object-contain rounded-lg shadow-lg" />
+  `;
+  overlay.onclick = () => overlay.remove();
+  document.body.appendChild(overlay);
+}
+
+/* Main: Render approvals (only runs once when opening page) */
+async function renderFuelApprovals() {
+  const s = getSessionLocally();
+  if (!s) return alert("Please login first");
+
+  const page = ensureApprovalsSection();
+  document.querySelectorAll("main section").forEach((x) => x.classList.add("hidden"));
+  page.classList.remove("hidden");
+
+  page.innerHTML = `
+    <div class="page-back mb-3">
+      <button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="go('pageHome')">← Back</button>
+    </div>
+    <h2 class="text-lg font-semibold mb-3">Pending Fuel Approvals</h2>
+    <div id="approvalList" class="space-y-4"></div>
+  `;
+
+  const list = page.querySelector("#approvalList");
+  list.innerHTML = `<div class="text-center text-slate-400 py-4">Loading pending requests…</div>`;
+
+  try {
+    if (typeof SB === "undefined" || !SB) throw new Error("Supabase client (SB) not available");
+
+    const companyId = s.company_id;
+    if (!companyId) {
+      list.innerHTML = `<div class="text-center text-slate-500 py-4">No company assigned to this user.</div>`;
+      return;
+    }
+
+    const { data: rows, error } = await SB.from("fuel_requests")
+      .select("*")
+      .eq("company_id", companyId)
+      .eq("status", "Pending Review")
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+    if (!rows || rows.length === 0) {
+      list.innerHTML = `<div class="text-center text-slate-500 py-4">No pending requests found.</div>`;
+      return;
+    }
+
+    const [vendorsRes, vehiclesRes] = await Promise.all([
+      SB.from("vendors").select("*"),
+      SB.from("vehicles").select("*"),
+    ]);
+    const vendors = vendorsRes.data || [];
+    const vehicles = vehiclesRes.data || [];
+
+    list.innerHTML = "";
+
+    rows.forEach((req) => {
+      const vendor = vendors.find((v) => v.id === req.vendor_id);
+      const vehicle = vehicles.find((v) => v.id === req.vehicle_id);
+      const createdAt = req.created_at ? new Date(req.created_at).toLocaleString() : "—";
+      const photoSrc = base64ToDataUrl(req.photo_base64 || req.photo || "");
+      const photoHtml = photoSrc
+        ? `<img src="${photoSrc}" alt="Fuel Photo"
+            class="w-full h-64 object-cover rounded-lg border cursor-zoom-in hover:opacity-90 transition"
+            onclick="showImageFullscreen('${photoSrc}')"/>`
+        : `<div class="text-slate-400 text-center py-12">No photo</div>`;
+
+      const lat = req.latitude || req.lat || req.location_lat;
+      const lng = req.longitude || req.lng || req.location_lng;
+      const mapLink =
+        lat && lng
+          ? `<a href="https://www.google.com/maps?q=${lat},${lng}" target="_blank"
+               class="text-blue-600 underline text-sm mt-1 inline-block">
+               📍 ${lat}, ${lng}
+             </a>`
+          : "";
+
+      const card = document.createElement("div");
+      card.className =
+        "bg-white shadow rounded-xl p-4 md:flex md:items-start md:gap-4 hover:shadow-lg transition";
+      card.innerHTML = `
+        <div class="flex-1">
+          <div class="font-semibold text-blue-700 mb-1">Request #${req.id}</div>
+          <div class="text-sm text-slate-600">Vehicle: ${vehicle?.name || "—"}</div>
+          <div class="text-sm text-slate-600">Fuel Type: ${req.fuel_type || "—"}</div>
+          <div class="text-sm text-slate-600">Vendor: ${vendor?.name || "—"}</div>
+          <div class="text-sm text-slate-600">Rate: ₹${req.rate_per_unit || 0}</div>
+          <div class="text-sm text-slate-600">Consumption: ${req.consumption_unit || 0}</div>
+          <div class="text-sm text-slate-600">Total: ₹${req.total_amount || 0}</div>
+          <div class="text-sm text-slate-600">Odometer: ${req.odometer || "—"}</div>
+          <div class="text-sm text-slate-600">Remark: ${req.remark || "—"}</div>
+          ${mapLink}
+          <div class="text-xs text-slate-500 mt-2">
+            Created by <b>${req.created_by || "—"}</b> at ${createdAt}
+          </div>
+          <div class="flex gap-2 mt-3 action-buttons" id="action-${req.id}">
+            <button class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded"
+              onclick="approveFuelRequest('${req.id}')">Approve</button>
+            <button class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded"
+              onclick="rejectFuelRequest('${req.id}')">Reject</button>
+          </div>
+        </div>
+        <div class="mt-3 md:mt-0 md:w-64">${photoHtml}</div>
+      `;
+      list.appendChild(card);
+    });
+  } catch (err) {
+    console.error("renderFuelApprovals error:", err);
+    list.innerHTML = `<div class="text-red-500 text-center py-3">Error loading approvals: ${err.message}</div>`;
+  }
+}
+
+/* Approve request - inline update (no confirm, no full refresh) */
+async function approveFuelRequest(id) {
+  const s = getSessionLocally();
+  if (!s) return alert("Please login first");
+
+  try {
+    const { error } = await SB.from("fuel_requests")
+      .update({
+        status: "Approved",
+        approved_by: s.display_name || s.user,
+        approved_at: new Date().toISOString(),
+      })
+      .eq("id", id);
+    if (error) throw error;
+
+    console.log("✅ Request approved successfully:", id);
+
+    const actionDiv = document.getElementById(`action-${id}`);
+    if (actionDiv) {
+      actionDiv.innerHTML = `<div class='text-green-600 font-semibold'>✅ Request approved successfully: ${id}</div>`;
+    }
+  } catch (err) {
+    console.error("approveFuelRequest error:", err);
+    alert("Error approving request: " + err.message);
+  }
+}
+
+/* Reject request - inline update (still asks reason) */
+async function rejectFuelRequest(id) {
+  const s = getSessionLocally();
+  if (!s) return alert("Please login first");
+
+  const reason = prompt("Enter rejection remark:");
+  if (!reason) return;
+
+  try {
+    const { data, error: fetchErr } = await SB.from("fuel_requests")
+      .select("remark")
+      .eq("id", id)
+      .single();
+    if (fetchErr) throw fetchErr;
+
+    const oldRemark = (data?.remark || "").trim();
+    const newRemark =
+      (oldRemark ? oldRemark + "\n" : "") +
+      `❌ Rejected by ${s.display_name || s.user} at ${new Date().toLocaleString()}: ${reason.trim()}`;
+
+    const { error } = await SB.from("fuel_requests")
+      .update({
+        status: "Rejected",
+        remark: newRemark,
+        approved_by: s.display_name || s.user,
+        approved_at: new Date().toISOString(),
+      })
+      .eq("id", id);
+    if (error) throw error;
+
+    console.log("❌ Request rejected successfully:", id);
+
+    const actionDiv = document.getElementById(`action-${id}`);
+    if (actionDiv) {
+      actionDiv.innerHTML = `<div class='text-red-600 font-semibold'>❌ Request rejected successfully: ${id}</div>`;
+    }
+  } catch (err) {
+    console.error("rejectFuelRequest error:", err);
+    alert("Error rejecting request: " + err.message);
+  }
+}
+
 </script>
 
 
