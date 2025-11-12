@@ -3,7 +3,7 @@
 🚌 SHREE RAMKRUPA TRAVELS - BUSMATE WEB APPLICATION (index_fixed_final.html)
 ====================================================================================
 Version: Final Production Build
-Author: Bhagyesh Limbad 
+Author: Bhagyesh Limbad & ChatGPT GPT-5
 
 🔧 Functional Summary:
 - Full Supabase integration (no localStorage)
@@ -29,11 +29,10 @@ Author: Bhagyesh Limbad
 
 ====================================================================================
 -->
+<!DOCTYPE html>
 
-<!doctype html>
 <html lang="en">
 <head>
-
 <style>
 /* --- Hide debug toggle button completely for production --- */
 #debugToggleBtn {
@@ -41,13 +40,11 @@ Author: Bhagyesh Limbad
   visibility: hidden !important;
 }
 </style>
-
-  <meta charset="utf-8" />
-  <title>BusMate - Test Mode</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-
-  <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com">
+<meta charset="utf-8"/>
+<title>BusMate - Test Mode</title>
+<meta content="width=device-width,initial-scale=1" name="viewport"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com">
 
 // --- Announcement: configurable cooldown & single-play guard ---
 const ANNOUNCEMENT_COOLDOWN_MS = 10000; // <-- edit this value (milliseconds)
@@ -166,15 +163,12 @@ window.playAnnouncementFromPopup = function(btn){
 window.playAnnouncementById = playAnnouncementById;
 
 </script>
-
-  <!-- Leaflet -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-  <!-- SheetJS for export -->
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-
-  <style>
+<!-- Leaflet -->
+<link href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- SheetJS for export -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
     body{ -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; }
     .mapbox{ width:100%; height:56vh; min-height:280px; border-radius:12px; overflow:hidden; box-shadow:0 10px 30px rgba(2,6,23,0.06); }
     @media (min-width:1024px){ .mapbox{ height:48vh; } }
@@ -186,398 +180,467 @@ window.playAnnouncementById = playAnnouncementById;
     .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, 'Roboto Mono', monospace; }
     .logo-small{ width:36px;height:24px;object-fit:contain;border-radius:4px; }
   </style>
+<meta content="no-cache, no-store, must-revalidate" http-equiv="Cache-Control"/>
+<meta content="no-cache" http-equiv="Pragma"/>
+<meta content="0" http-equiv="Expires"/>
 </head>
 <body class="bg-slate-50 text-slate-900">
-
 <!-- HEADER -->
 <header class="bg-blue-600 text-white sticky top-0 z-40">
-  <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-    <div class="flex items-center gap-3">
-      <div id="logoBox" class="w-10 h-10 bg-white rounded-md flex items-center justify-center text-blue-600 font-bold">BM</div>
-      <div>
-        <div id="companyTitle" class="font-semibold">BusMate</div>
-        <div id="companySub" class="text-xs opacity-90">Smart Buddy for Bus Operator</div>      <div class="ml-4"><button id="debugToggleBtn" class="hidden bg-white text-blue-600 px-3 py-1 rounded" onclick="toggleDebug()">Enable Debug</button></div>
-      </div>
-    </div>
-    <div class="flex items-center gap-4">
-      <div id="roleLabel" class="text-sm"></div>
-      <div class="text-sm">Welcome <span id="userLabel">Guest</span></div>
-      <button id="logoutBtn" class="hidden bg-white text-blue-600 px-3 py-1 rounded" onclick="logout()">Logout</button>
-    </div>
-  </div>
+<div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 bg-white rounded-md flex items-center justify-center text-blue-600 font-bold" id="logoBox">BM</div>
+<div>
+<div class="font-semibold" id="companyTitle">BusMate</div>
+<div class="text-xs opacity-90" id="companySub">Smart Buddy for Bus Operator</div> <div class="ml-4"><button class="hidden bg-white text-blue-600 px-3 py-1 rounded" id="debugToggleBtn" onclick="toggleDebug()">Enable Debug</button></div>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="text-sm" id="roleLabel"></div>
+<div class="text-sm">Welcome <span id="userLabel">Guest</span></div>
+<button class="hidden bg-white text-blue-600 px-3 py-1 rounded" id="logoutBtn" onclick="logout()">Logout</button>
+<button class="ml-2 px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm" id="clearCacheBtn" onclick="clearAllCaches(this)">
+  Clear Cache
+</button>
+
+</div>
+</div>
 </header>
-
 <main class="max-w-6xl mx-auto p-4 space-y-6">
-
-  <!-- LOGIN -->
-  <section id="pageLogin">
-    <div class="max-w-md mx-auto bg-white rounded-xl shadow p-6">
-      <div class="text-center">
-        <div class="w-14 h-14 rounded-xl bg-blue-600 mx-auto mb-2"></div>
-        <h2 class="text-2xl font-bold">BusMate</h2>
-        <p class="text-sm text-slate-500 mt-1">Sign in — Master / Admin / Operator</p>
-      </div>
-
-      <div class="mt-6 space-y-3">
-        <label class="block text-sm">Username</label>
-        <input id="loginUser" class="w-full rounded-lg border px-3 py-2" placeholder="bhagyesh / admin / operator" />
-        <label class="block text-sm">Password</label>
-        <input id="loginPass" type="password" class="w-full rounded-lg border px-3 py-2" placeholder="password" />
-        <div class="flex gap-2 mt-4">
-          <button id="loginBtn" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700" onclick="handleLogin()">Login</button>
-          <button id="helpBtn" class="bg-slate-100 px-4 py-2 rounded hover:bg-slate-200" onclick="showHelp()">Help</button>
-        </div>
-        <div class="text-xs text-slate-400 mt-3">Managed by: <a href="mailto:bhagyeshlimbad@gmail.com" class="underline">bhagyeshlimbad@gmail.com</a></div>
-      </div>
-    </div>
-  </section>
-
-  <!-- HOME / DASHBOARD -->
-  <section id="pageHome" class="hidden">
-    <div class="grid gap-4">
-      <div class="bg-white rounded-xl shadow p-4 flex items-center justify-between">
-        <div>
-          <div id="homeCompanyTitle" class="text-lg font-semibold"></div>
-          <div id="homeCompanySub" class="text-sm text-slate-500">Dashboard</div>
-        </div>
-        <div class="text-right">
-          <div id="homeUserLabel" class="font-medium"></div>
-          <div id="homeRole" class="text-xs text-slate-200"></div>
-        </div>
-      </div>
-
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <button id="tileCompanies" class="tile hidden bg-white rounded-xl shadow p-4 text-left hover:shadow-md" onclick="go('pageMasterAdmin')">
-          <div class="font-semibold">Company Management</div>
-          <div class="text-sm text-slate-500">Create / Enable / Disable</div>
-        </button>
-
-        <button id="tileUsers" class="tile hidden bg-white rounded-xl shadow p-4 text-left hover:shadow-md" onclick="go('pageUsers')">
-          <div class="font-semibold">Manage Users</div>
-          <div class="text-sm text-slate-500">Create / Edit / Assign</div>
-        </button>
-
-        <button id="tileLocations" class="tile hidden bg-white rounded-xl shadow p-4 text-left hover:shadow-md" onclick="go('pageLocations')">
-          <div class="font-semibold">Manage Locations</div>
-          <div class="text-sm text-slate-500">Stops / Radius / Msg</div>
-        </button>
-
-        <button id="tileTrips" class="tile hidden bg-white rounded-xl shadow p-4 text-left hover:shadow-md" onclick="go('pageTripSetup')">
-          <div class="font-semibold">Manage Trips</div>
-          <div class="text-sm text-slate-500">Create / Order / Save</div>
-        </button>
-
-        <button id="tileStart" class="tile hidden bg-white rounded-xl shadow p-4 text-left hover:shadow-md" onclick="go('pageStartTrip')">
-          <div class="font-semibold">Start Trip</div>
-          <div class="text-sm text-slate-500">Start & Track</div>
-        </button>
-
-        <button id="tileReports" class="tile hidden bg-white rounded-xl shadow p-4 text-left hover:shadow-md" onclick="go('pageReports')">
-          <div class="font-semibold">Reports</div>
-          <div class="text-sm text-slate-500">Trip history & logs</div>
-        </button>
-      </div>
-
-      <div class="bg-white rounded-xl shadow p-4">
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div><div class="text-sm text-slate-500">Locations</div><div id="statLocations" class="font-semibold">0</div></div>
-          <div><div class="text-sm text-slate-500">Trips</div><div id="statTrips" class="font-semibold">0</div></div>
-          <div><div class="text-sm text-slate-500">Companies</div><div id="statCompanies" class="font-semibold">0</div></div>
-          <div><div class="text-sm text-slate-500">Runs</div><div id="statRuns" class="font-semibold">0</div></div>
-        </div>
-      </div>
-
-      <!-- Account / Password -->
-      <div id="passwordBox" class="bg-white rounded-xl shadow p-4">
-        <div class="flex items-center justify-between">
-          <div>
-            <h3 class="font-semibold">My Account</h3>
-            <div class="text-xs text-slate-500">Change your password</div>
-          </div>
-          <div>
-            <button class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded" onclick="openPasswordForm()">Change Password</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- MASTER ADMIN -->
-  <section id="pageMasterAdmin" class="hidden">
-    <div class="bg-white rounded-xl shadow p-4">
-      <div class="page-back"><button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="go('pageHome')">← Back</button></div>
-      <div class="flex items-center justify-between">
-        <h2 class="text-lg font-semibold">Master Admin — Companies</h2>
-        <div>
-          <button class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700" onclick="openCompanyForm()">Create Company</button>
-        </div>
-      </div>
-      <div class="mt-4"><ul id="companyList" class="space-y-3"></ul></div>
-    </div>
-
-    <div id="companyModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div class="bg-white p-4 rounded-xl w-96">
-        <h3 class="font-semibold">Create / Edit Company</h3>
-        <label class="block mt-2 text-sm">Company Name</label>
-        <input id="companyNameInp" class="w-full border rounded px-3 py-2" />
-        <label class="block mt-2 text-sm">Logo URL (optional)</label>
-        <input id="companyLogoInp" class="w-full border rounded px-3 py-2" />
-        <div class="flex gap-2 mt-3">
-          <button class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700" onclick="saveCompany()">Save</button>
-          <button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="closeCompanyModal()">Cancel</button>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- USERS -->
-  <section id="pageUsers" class="hidden">
-    <div class="bg-white rounded-xl shadow p-4">
-      <div class="page-back"><button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="go('pageHome')">← Back</button></div>
-      <div class="flex items-center justify-between">
-        <h2 class="text-lg font-semibold">Users</h2>
-        <div><button class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700" onclick="openUserForm()">Add User</button></div>
-      </div>
-      <div class="mt-4"><ul id="usersList" class="space-y-3"></ul></div>
-    </div>
-
-    <div id="userModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div class="bg-white p-4 rounded-xl w-96">
-        <h3 class="font-semibold">Add / Edit User</h3>
-        <label class="block mt-2 text-sm">Username</label>
-        <input id="userNameInp" class="w-full border rounded px-3 py-2" />
-        <label class="block mt-2 text-sm">Password</label>
-        <input id="userPassInp" class="w-full border rounded px-3 py-2" />
-        <label class="block mt-2 text-sm">Display Name</label>
-        <input id="userDisplayInp" class="w-full border rounded px-3 py-2" />
-        <label class="block mt-2 text-sm">Role</label>
-        <select id="userRoleInp" class="w-full border rounded px-3 py-2"><option>Admin</option><option>Operator</option></select>
-        <label class="block mt-2 text-sm">Company</label>
-        <select id="userCompanyInp" class="w-full border rounded px-3 py-2"></select>
-        <div class="flex gap-2 mt-3">
-          <button class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700" onclick="saveUser()">Save</button>
-          <button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="closeUserModal()">Cancel</button>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- LOCATIONS -->
-  <section id="pageLocations" class="hidden">
-    <div class="grid md:grid-cols-2 gap-4">
-      <div class="bg-white rounded-xl shadow p-4">
-        <div class="page-back"><button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="go('pageHome')">← Back</button></div>
-        <h3 class="font-semibold">Add / Edit Location</h3>
-        <label class="block mt-3 text-sm">Name</label>
-        <input type="hidden" id="locId" />
-<input id="locName" class="w-full border rounded px-3 py-2" />
-        <div class="grid grid-cols-2 gap-2 mt-2">
-          <div><label class="text-sm">Latitude</label><input id="locLat" class="w-full border rounded px-3 py-2" /></div>
-          <div><label class="text-sm">Longitude</label><input id="locLng" class="w-full border rounded px-3 py-2" /></div>
-        </div>
-        <label class="block mt-2 text-sm">Radius (meters)</label>
-        <input id="locRadius" type="number" value="500" class="w-full border rounded px-3 py-2" />
-        <label class="block mt-2 text-sm">Announcement message</label>
-        <input id="locMsg" class="w-full border rounded px-3 py-2" placeholder="Custom announcement text (played during trip)" />
-        <label class="block mt-2 text-sm">Announcement Audio (optional)</label>
-        <input id="locAudio" type="file" accept="audio/*" class="w-full border rounded px-3 py-2" />
-        <div class="flex gap-2 mt-3">
-          <button class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded" onclick="useCurrentGPS()">Use Current GPS</button>
-          <button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded" onclick="saveLocation()">Save</button>
-          <button class="bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded" onclick="testAnnouncement()">Test Announcement</button>
-        </div>
-      </div>
-
-      <div class="bg-white rounded-xl shadow p-4">
-        <h3 class="font-semibold">Map Picker</h3>
-        <div id="locMap" class="mapbox mt-2"></div>
-        <h4 class="mt-4">Saved Locations</h4>
-        <div id="locationList" class="mt-2 space-y-2"></div>
-      </div>
-    </div>
-  </section>
-
-  <!-- TRIP SETUP -->
-  <section id="pageTripSetup" class="hidden">
-    <div class="page-back"><button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="go('pageHome')">← Back</button></div>
-
-    <div class="bg-white rounded-xl shadow p-4">
-      <h3 class="font-semibold">Manage Trips</h3>
-
-      <div class="grid md:grid-cols-3 gap-4 mt-4">
-        <div>
-          <label class="text-sm">Trip Name</label>
-          <input id="tripName" class="w-full border rounded px-3 py-2" />
-          <label class="text-sm mt-2">Available Locations</label>
-          <div id="availList" class="border rounded mt-2 p-2 h-64 overflow-auto bg-white"></div>
-        </div>
-
-        <div class="flex flex-col items-center justify-center gap-2">
-          <button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded" onclick="addPlanned()">Add →</button>
-          <button class="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded" onclick="removePlanned()">← Remove</button>
-          <button class="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded" onclick="movePlanned(-1)">↑ Up</button>
-          <button class="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded" onclick="movePlanned(1)">↓ Down</button>
-          <button class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded" onclick="clearPlanned()">Clear</button>
-        </div>
-
-        <div>
-          <label class="text-sm">Planned Trip (ordered)</label>
-          <div id="plannedList" class="border rounded mt-2 p-2 h-64 overflow-auto bg-white"></div>
-          <div class="flex gap-2 mt-3">
-            <button class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded" onclick="saveTrip()">Save Trip</button>
-          </div>
-        </div>
-      </div>
-
-      <h4 class="mt-4">Saved Trips</h4>
-      <div id="tripList" class="mt-2 space-y-2"></div>
-    </div>
-  </section>
-
-  <!-- PASSWORD MODAL (like Manage Trip modal) -->
-  <div id="passwordModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-    <div class="bg-white p-4 rounded-xl w-96">
-      <h3 class="font-semibold">Change Password</h3>
-      <input id="newPassModal1" type="password" class="w-full border rounded px-3 py-2 mt-3" placeholder="New password" />
-      <input id="newPassModal2" type="password" class="w-full border rounded px-3 py-2 mt-2" placeholder="Confirm new password" />
-      <div class="flex gap-2 mt-3 justify-end">
-        <button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="closePasswordModal()">Cancel</button>
-        <button class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700" onclick="savePassword()">Save</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- START TRIP -->
-  <section id="pageStartTrip" class="hidden">
-    <div id="startPanel" class="bg-white rounded-xl shadow p-4">
-      <div class="page-back"><button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="go('pageHome')">← Back</button></div>
-      <h3 class="font-semibold">Start Trip</h3>
-      <label class="block mt-3 text-sm">Choose trip</label>
-      <select id="startTripSelect" class="w-full border rounded px-3 py-2"></select>
-      <div class="flex gap-2 mt-3">
-        <button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded" onclick="startSelectedTrip()">Start Trip</button>
-      </div>
-    </div>
-
-    <div id="ongoingPanel" class="hidden mt-4">
-      <!-- BACK BUTTON (INSIDE ONGOING PANEL) -> ALWAYS GO HOME -->
-      <div class="flex justify-between items-center mb-3">
-        <div>
-          <button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="go('pageHome')">← Back to Home</button>
-          </div>
-          <div>
-          <button class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded" onclick="endTrip()">End Trip</button>
-        </div>
+<!-- LOGIN -->
+<section id="pageLogin">
+<div class="max-w-md mx-auto bg-white rounded-xl shadow p-6">
+<div class="text-center">
+<div class="w-14 h-14 rounded-xl bg-blue-600 mx-auto mb-2"></div>
+<h2 class="text-2xl font-bold">BusMate</h2>
+<p class="text-sm text-slate-500 mt-1">Sign in — Master / Admin / Operator</p>
+</div>
+<div class="mt-6 space-y-3">
+<label class="block text-sm">Username</label>
+<input class="w-full rounded-lg border px-3 py-2" id="loginUser" placeholder="bhagyesh / admin / operator"/>
+<label class="block text-sm">Password</label>
+<input class="w-full rounded-lg border px-3 py-2" id="loginPass" placeholder="password" type="password"/>
+<div class="flex gap-2 mt-4">
+<button class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700" id="loginBtn" onclick="handleLogin()">Login</button>
+<button class="bg-slate-100 px-4 py-2 rounded hover:bg-slate-200" id="helpBtn" onclick="showHelp()">Help</button>
+</div>
+<div class="text-xs text-slate-400 mt-3">Managed by: <a class="underline" href="mailto:bhagyeshlimbad@gmail.com">bhagyeshlimbad@gmail.com</a></div>
+</div>
+</div>
+</section>
+<!-- HOME / DASHBOARD -->
+<section class="hidden" id="pageHome">
+<div class="grid gap-4">
+<div class="bg-white rounded-xl shadow p-4 flex items-center justify-between">
+<div>
+<div class="text-lg font-semibold" id="homeCompanyTitle"></div>
+<div class="text-sm text-slate-500" id="homeCompanySub">Dashboard</div>
+</div>
+<div class="text-right">
+<div class="font-medium" id="homeUserLabel"></div>
+<div class="text-xs text-slate-200" id="homeRole"></div>
+</div>
+</div>
+<div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+<button class="tile hidden bg-white rounded-xl shadow p-4 text-left hover:shadow-md" id="tileCompanies" onclick="go('pageMasterAdmin')">
+<div class="font-semibold">Company Management</div>
+<div class="text-sm text-slate-500">Create / Enable / Disable</div>
+</button>
+<button class="tile hidden bg-white rounded-xl shadow p-4 text-left hover:shadow-md" id="tileUsers" onclick="go('pageUsers')">
+<div class="font-semibold">Manage Users</div>
+<div class="text-sm text-slate-500">Create / Edit / Assign</div>
+</button>
+<button class="tile bg-white rounded-xl shadow p-4 text-left hover:shadow-md" id="tileVendors" onclick="go('pageVendors')">
+<div class="font-semibold">Manage Assets</div>
+<div class="text-sm text-slate-500">Vendors &amp; Vehicles</div>
+</button>
+<button class="tile hidden bg-white rounded-xl shadow p-4 text-left hover:shadow-md" id="tileLocations" onclick="go('pageLocations')">
+<div class="font-semibold">Manage Locations</div>
+<div class="text-sm text-slate-500">Stops / Radius / Msg</div>
+</button>
+<button class="tile hidden bg-white rounded-xl shadow p-4 text-left hover:shadow-md" id="tileTrips" onclick="go('pageTripSetup')">
+<div class="font-semibold">Manage Trips</div>
+<div class="text-sm text-slate-500">Create / Order / Save</div>
+</button>
+<button class="tile hidden bg-white rounded-xl shadow p-4 text-left hover:shadow-md" id="tileStart" onclick="go('pageStartTrip')">
+<div class="font-semibold">Start Trip</div>
+<div class="text-sm text-slate-500">Start &amp; Track</div>
+</button>
+<button class="tile hidden bg-white rounded-xl shadow p-4 text-left hover:shadow-md" id="tileReports" onclick="go('pageReports')">
+<div class="font-semibold">Reports</div>
+<div class="text-sm text-slate-500">Trip history &amp; logs</div>
+</button>
+<!-- New Added Tiles -->
+<button class="tile hidden bg-white rounded-xl shadow p-4 text-left hover:shadow-md" id="tileFuelRequest" onclick="go('pageFuelRequest')">
+<div class="font-semibold">Fuel Request</div>
+<div class="text-sm text-slate-500">Create / Track</div>
+</button>
+<button class="tile hidden bg-white rounded-xl shadow p-4 text-left hover:shadow-md" id="tileMyRequests" onclick="go('pageMyRequests')">
+<div class="font-semibold">My Requests</div>
+<div class="text-sm text-slate-500">View Submitted</div>
+</button>
+<button class="tile hidden bg-white rounded-xl shadow p-4 text-left hover:shadow-md" id="tileFuelApprovals" onclick="go('pageFuelApprovals')">
+<div class="font-semibold">Approvals</div>
+<div class="text-sm text-slate-500">Review / Approve</div>
+</button>
+</div>
+<div class="bg-white rounded-xl shadow p-4">
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+<div><div class="text-sm text-slate-500">Vendors</div><div class="font-semibold" id="statVendors">0</div></div>
+<div><div class="text-sm text-slate-500">Vehicles</div><div class="font-semibold" id="statVehicles">0</div></div>
+<div><div class="text-sm text-slate-500">Locations</div><div class="font-semibold" id="statLocations">0</div></div>
+<div><div class="text-sm text-slate-500">Trips</div><div class="font-semibold" id="statTrips">0</div></div>
+<div><div class="text-sm text-slate-500">Companies</div><div class="font-semibold" id="statCompanies">0</div></div>
+<div><div class="text-sm text-slate-500">Runs</div><div class="font-semibold" id="statRuns">0</div></div>
+</div>
+</div>
+<!-- Account / Password -->
+<div class="bg-white rounded-xl shadow p-4" id="passwordBox">
+<div class="flex items-center justify-between">
+<div>
+<h3 class="font-semibold">My Account</h3>
+<div class="text-xs text-slate-500">Change your password</div>
+</div>
+<div>
+<button class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded" onclick="openPasswordForm()">Change Password</button>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- MASTER ADMIN -->
+<section class="hidden" id="pageMasterAdmin">
+<div class="bg-white rounded-xl shadow p-4">
+<div class="page-back"><button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="go('pageHome')">← Back</button></div>
+<div class="flex items-center justify-between">
+<h2 class="text-lg font-semibold">Master Admin — Companies</h2>
+<div>
+<button class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700" onclick="openCompanyForm()">Create Company</button>
+</div>
+</div>
+<div class="mt-4"><ul class="space-y-3" id="companyList"></ul></div>
+</div>
+<div class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40" id="companyModal">
+<div class="bg-white p-4 rounded-xl w-96">
+<h3 class="font-semibold">Create / Edit Company</h3>
+<label class="block mt-2 text-sm">Company Name</label>
+<input class="w-full border rounded px-3 py-2" id="companyNameInp"/>
+<label class="block mt-2 text-sm">Logo URL (optional)</label>
+<input class="w-full border rounded px-3 py-2" id="companyLogoInp"/>
+<div class="flex gap-2 mt-3">
+<button class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700" onclick="saveCompany()">Save</button>
+<button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="closeCompanyModal()">Cancel</button>
+</div>
+</div>
+</div>
+</section>
+<!-- USERS -->
+<section class="hidden" id="pageUsers">
+<div class="bg-white rounded-xl shadow p-4">
+<div class="page-back"><button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="go('pageHome')">← Back</button></div>
+<div class="flex items-center justify-between">
+<h2 class="text-lg font-semibold">Users</h2>
+<div><button class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700" onclick="openUserForm()">Add User</button></div>
+</div>
+<div class="mt-4"><ul class="space-y-3" id="usersList"></ul></div>
+</div>
+<div class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40" id="userModal">
+<div class="bg-white p-4 rounded-xl w-96">
+<h3 class="font-semibold">Add / Edit User</h3>
+<label class="block mt-2 text-sm">Username</label>
+<input class="w-full border rounded px-3 py-2" id="userNameInp"/>
+<label class="block mt-2 text-sm">Password</label>
+<input class="w-full border rounded px-3 py-2" id="userPassInp"/>
+<label class="block mt-2 text-sm">Display Name</label>
+<input class="w-full border rounded px-3 py-2" id="userDisplayInp"/>
+<label class="block mt-2 text-sm">Role</label>
+<select class="w-full border rounded px-3 py-2" id="userRoleInp"><option>Admin</option><option>Operator</option></select>
+<label class="block mt-2 text-sm">Company</label>
+<select class="w-full border rounded px-3 py-2" id="userCompanyInp"></select>
+<div class="flex gap-2 mt-3">
+<label class="block mt-2 font-semibold">Permissions</label>
+<div class="grid grid-cols-2 gap-2 text-sm">
+<label><input id="permCompanies" type="checkbox"/> Manage Company</label>
+<label><input id="permUsers" type="checkbox"/> Manage Users</label>
+<label><input id="permVendors" type="checkbox"/> Vendor / Asset Manage</label>
+<label><input id="permLocations" type="checkbox"/> Manage Location</label>
+<label><input id="permTrips" type="checkbox"/> Manage Trips</label>
+<label><input id="permStart" type="checkbox"/> Start Trip</label>
+<label><input id="permDashboard" type="checkbox"/> Dashboard</label>
+<label><input id="permReports" type="checkbox"/> Reports</label>
+<label><input id="permMyRequests" type="checkbox"/> My Requests</label>
+<label><input id="permFuelRequest" type="checkbox"/> Fuel Request</label>
+<label><input id="permFuelApprovals" type="checkbox"/> Fuel Approvals</label>
+</div>
+<button class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700" onclick="saveUser()">Save</button>
+<button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="closeUserModal()">Cancel</button>
+</div>
+</div>
+</div>
+</section>
+<!-- LOCATIONS -->
+<section class="hidden" id="pageLocations">
+<div class="grid md:grid-cols-2 gap-4">
+<div class="bg-white rounded-xl shadow p-4">
+<div class="page-back"><button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="go('pageHome')">← Back</button></div>
+<h3 class="font-semibold">Add / Edit Location</h3>
+<label class="block mt-3 text-sm">Name</label>
+<input id="locId" type="hidden"/>
+<input class="w-full border rounded px-3 py-2" id="locName"/>
+<div class="grid grid-cols-2 gap-2 mt-2">
+<div><label class="text-sm">Latitude</label><input class="w-full border rounded px-3 py-2" id="locLat"/></div>
+<div><label class="text-sm">Longitude</label><input class="w-full border rounded px-3 py-2" id="locLng"/></div>
+</div>
+<label class="block mt-2 text-sm">Radius (meters)</label>
+<input class="w-full border rounded px-3 py-2" id="locRadius" type="number" value="500"/>
+<label class="block mt-2 text-sm">Announcement message</label>
+<input class="w-full border rounded px-3 py-2" id="locMsg" placeholder="Custom announcement text (played during trip)"/>
+<label class="block mt-2 text-sm">Announcement Audio (optional)</label>
+<input accept="audio/*" class="w-full border rounded px-3 py-2" id="locAudio" type="file"/>
+<div class="flex gap-2 mt-3">
+<button class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded" onclick="useCurrentGPS()">Use Current GPS</button>
+<button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded" onclick="saveLocation()">Save</button>
+<button class="bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded" onclick="testAnnouncement()">Test Announcement</button>
+</div>
+</div>
+<div class="bg-white rounded-xl shadow p-4">
+<h3 class="font-semibold">Map Picker</h3>
+<div class="mapbox mt-2" id="locMap"></div>
+<h4 class="mt-4">Saved Locations</h4>
+<div class="mt-2 space-y-2" id="locationList"></div>
+</div>
+</div>
+</section>
+<!-- TRIP SETUP -->
+<section class="hidden" id="pageTripSetup">
+<div class="page-back"><button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="go('pageHome')">← Back</button></div>
+<div class="bg-white rounded-xl shadow p-4">
+<h3 class="font-semibold">Manage Trips</h3>
+<div class="grid md:grid-cols-3 gap-4 mt-4">
+<div>
+<label class="text-sm">Trip Name</label>
+<input class="w-full border rounded px-3 py-2" id="tripName"/>
+<label class="text-sm mt-2">Available Locations</label>
+<div class="border rounded mt-2 p-2 h-64 overflow-auto bg-white" id="availList"></div>
+</div>
+<div class="flex flex-col items-center justify-center gap-2">
+<button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded" onclick="addPlanned()">Add →</button>
+<button class="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded" onclick="removePlanned()">← Remove</button>
+<button class="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded" onclick="movePlanned(-1)">↑ Up</button>
+<button class="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded" onclick="movePlanned(1)">↓ Down</button>
+<button class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded" onclick="clearPlanned()">Clear</button>
+</div>
+<div>
+<label class="text-sm">Planned Trip (ordered)</label>
+<div class="border rounded mt-2 p-2 h-64 overflow-auto bg-white" id="plannedList"></div>
+<div class="flex gap-2 mt-3">
+<button class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded" onclick="saveTrip()">Save Trip</button>
+</div>
+</div>
+</div>
+<h4 class="mt-4">Saved Trips</h4>
+<div class="mt-2 space-y-2" id="tripList"></div>
+</div>
+</section>
+<!-- PASSWORD MODAL (like Manage Trip modal) -->
+<div class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40" id="passwordModal">
+<div class="bg-white p-4 rounded-xl w-96">
+<h3 class="font-semibold">Change Password</h3>
+<input class="w-full border rounded px-3 py-2 mt-3" id="newPassModal1" placeholder="New password" type="password"/>
+<input class="w-full border rounded px-3 py-2 mt-2" id="newPassModal2" placeholder="Confirm new password" type="password"/>
+<div class="flex gap-2 mt-3 justify-end">
+<button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="closePasswordModal()">Cancel</button>
+<button class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700" onclick="savePassword()">Save</button>
+</div>
+</div>
+</div>
+<!-- START TRIP -->
+<section class="hidden" id="pageStartTrip">
+<div class="bg-white rounded-xl shadow p-4" id="startPanel">
+<div class="page-back"><button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="go('pageHome')">← Back</button></div>
+<h3 class="font-semibold">Start Trip</h3>
+<label class="block mt-3 text-sm">Choose trip</label>
+<select class="w-full border rounded px-3 py-2" id="startTripSelect"></select>
+<div class="flex gap-2 mt-3">
+<button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded" onclick="startSelectedTrip()">Start Trip</button>
+</div>
+</div>
+<div class="hidden mt-4" id="ongoingPanel">
+<!-- BACK BUTTON (INSIDE ONGOING PANEL) -> ALWAYS GO HOME -->
+<div class="flex justify-between items-center mb-3">
+<div>
+<button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="go('pageHome')">← Back to Home</button>
+</div>
+<div>
+<button class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded" onclick="endTrip()">End Trip</button>
+</div>
 </div>
 <!-- 
         <div><button class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded" onclick="endTrip()">End Trip</button></div> -->
-      </div>
-
-      <div>
-        <div id="runMap" class="mapbox"></div>
-      </div>
-
-      <div class="mt-3 flex items-center justify-between">
-        <div class="flex items-center gap-3">
-          <label class="text-sm small-muted">Auto Refresh:</label>
-          <select id="autoRefreshSelect" class="border rounded px-2 py-1 bg-white" onchange="setAutoRefreshInterval()">
-            <option value="5">5s</option>
-            <option value="10" selected>10s</option>
-            <option value="15">15s</option>
-            <option value="20">20s</option>
-          </select>
-          <div class="text-sm text-slate-500 ml-2">Device GPS mode</div>
-        </div>
-
-        <div class="flex items-center gap-2">
-          <button class="bg-white border px-3 py-1 rounded hover:bg-gray-50" onclick="centerCurrentGPS()">Current Location</button>
-        </div>
-      </div>
-
-      <div class="bg-white rounded-xl shadow p-4 mt-4">
-        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-          <div class="flex flex-wrap gap-2 items-center">
-            <button class="bg-white border px-3 py-2 rounded shadow hover:bg-gray-50" onclick="centerMap()">Center Map</button>
-            
-            <div class="flex items-center gap-2 pl-2">
-              <div class="text-xs small-muted">Volume</div>
-              <input id="volControl" type="range" min="0" max="1" step="0.1" value="1" onchange="setVolume(this.value)" />
-            </div>
-          </div>
-
-          <div class="text-sm text-slate-600">
-            <div><span class="font-semibold" id="ongoingTripName">—</span></div>
-            <div class="text-xs text-slate-400">Started: <span id="ongoingStart">—</span></div>
-          </div>
-        </div>
-
-        <hr class="my-3"/>
-
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <div class="text-xs small-muted">Current Latitude / Longitude</div>
-            <div class="font-mono" id="curLat">—</div>
-            <div class="font-mono" id="curLng">—</div>
-            <div class="text-xs small-muted mt-2">Current Speed</div>
-            <div id="curSpeed">—</div>
-          </div>
-
-          <div>
-            <div class="text-xs small-muted">Upcoming Stop</div>
-            <div class="font-semibold" id="upcomingName">—</div>
-            <div class="text-xs small-muted mt-2">Distance to Next</div>
-            <div id="distNext">—</div>
-            <div class="text-xs small-muted mt-2">ETA to Next</div>
-            <div id="etaNext">—</div>
-          </div>
-
-          <div>
-            <div class="text-xs small-muted">Progress</div>
-            <div class="font-semibold" id="progressStops">—</div>
-            <div class="w-full bg-slate-100 h-3 rounded mt-2 overflow-hidden">
-              <div id="progressBar" class="bg-blue-600 h-3 rounded" style="width:0%"></div>
-            </div>
-            <div class="text-xs text-slate-500 mt-2">Stops reached / total</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- REPORTS -->
-  <section id="pageReports" class="hidden">
-    <div class="page-back"><button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="go('pageHome')">← Back</button></div>
-    <div class="bg-white rounded-xl shadow p-4">
-      <div class="flex items-center justify-between">
-        <h3 class="font-semibold">Reports</h3>
-        <div>
-          <button class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded" onclick="exportTripsExcel()">Export Trips</button>
-          <button class="bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded" onclick="exportLoginsExcel()">Export Logins</button>
-        </div>
-      </div>
-
-      <h4 class="mt-4">Trip History</h4>
-      <div id="reportTrips" class="mt-2 space-y-2"></div>
-
-      <h4 class="mt-4">Login Activity</h4>
-      <div id="reportLogins" class="mt-2 space-y-2"></div>
-    </div>
-  </section>
-
+</div>
+<div>
+<div class="mapbox" id="runMap"></div>
+</div>
+<div class="mt-3 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<label class="text-sm small-muted">Auto Refresh:</label>
+<select class="border rounded px-2 py-1 bg-white" id="autoRefreshSelect" onchange="setAutoRefreshInterval()">
+<option value="5">5s</option>
+<option selected="" value="10">10s</option>
+<option value="15">15s</option>
+<option value="20">20s</option>
+</select>
+<div class="text-sm text-slate-500 ml-2">Device GPS mode</div>
+</div>
+<div class="flex items-center gap-2">
+<button class="bg-white border px-3 py-1 rounded hover:bg-gray-50" onclick="centerCurrentGPS()">Current Location</button>
+</div>
+</div>
+<div class="bg-white rounded-xl shadow p-4 mt-4">
+<div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+<div class="flex flex-wrap gap-2 items-center">
+<button class="bg-white border px-3 py-2 rounded shadow hover:bg-gray-50" onclick="centerMap()">Center Map</button>
+<div class="flex items-center gap-2 pl-2">
+<div class="text-xs small-muted">Volume</div>
+<input id="volControl" max="1" min="0" onchange="setVolume(this.value)" step="0.1" type="range" value="1"/>
+</div>
+</div>
+<div class="text-sm text-slate-600">
+<div><span class="font-semibold" id="ongoingTripName">—</span></div>
+<div class="text-xs text-slate-400">Started: <span id="ongoingStart">—</span></div>
+</div>
+</div>
+<hr class="my-3"/>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+<div>
+<div class="text-xs small-muted">Current Latitude / Longitude</div>
+<div class="font-mono" id="curLat">—</div>
+<div class="font-mono" id="curLng">—</div>
+<div class="text-xs small-muted mt-2">Current Speed</div>
+<div id="curSpeed">—</div>
+</div>
+<div>
+<div class="text-xs small-muted">Upcoming Stop</div>
+<div class="font-semibold" id="upcomingName">—</div>
+<div class="text-xs small-muted mt-2">Distance to Next</div>
+<div id="distNext">—</div>
+<div class="text-xs small-muted mt-2">ETA to Next</div>
+<div id="etaNext">—</div>
+</div>
+<div>
+<div class="text-xs small-muted">Progress</div>
+<div class="font-semibold" id="progressStops">—</div>
+<div class="w-full bg-slate-100 h-3 rounded mt-2 overflow-hidden">
+<div class="bg-blue-600 h-3 rounded" id="progressBar" style="width:0%"></div>
+</div>
+<div class="text-xs text-slate-500 mt-2">Stops reached / total</div>
+</div>
+</div>
+</div>
+</section>
+<!-- REPORTS -->
+<section class="hidden" id="pageReports">
+<div class="page-back"><button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="go('pageHome')">← Back</button></div>
+<div class="bg-white rounded-xl shadow p-4">
+<div class="flex items-center justify-between">
+<h3 class="font-semibold">Reports</h3>
+<div>
+<button class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded" onclick="exportTripsExcel()">Export Trips</button>
+<button class="bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded" onclick="exportLoginsExcel()">Export Logins</button>
+</div>
+</div>
+<h4 class="mt-4">Trip History</h4>
+<div class="mt-2 space-y-2" id="reportTrips"></div>
+<h4 class="mt-4">Login Activity</h4>
+<div class="mt-2 space-y-2" id="reportLogins"></div>
+</div>
+</section>
+<!-- VENDORS & VEHICLES -->
+<section class="hidden" id="pageVendors">
+<div class="grid md:grid-cols-2 gap-4">
+<div class="bg-white rounded-xl shadow p-4">
+<div class="page-back"><button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="go('pageHome')">← Back</button></div>
+<h3 class="font-semibold">Vendors</h3>
+<div class="flex items-center justify-between mt-3">
+<div class="text-sm text-slate-500">Create or edit vendors</div>
+<div><button class="bg-blue-600 text-white px-3 py-1 rounded" onclick="openVendorForm()">Add Vendor</button></div>
+</div>
+<div class="mt-4 space-y-3" id="vendorList"></div>
+</div>
+<div class="bg-white rounded-xl shadow p-4">
+<div class="page-back"><h3 class="font-semibold">Vehicles</h3></div>
+<div class="flex items-center justify-between mt-1">
+<div class="text-sm text-slate-500">Vehicles linked to vendors</div>
+<div><button class="bg-blue-600 text-white px-3 py-1 rounded" onclick="openVehicleForm()">Add Vehicle</button></div>
+</div>
+<div class="mt-4 space-y-3" id="vehicleList"></div>
+</div>
+</div>
+<!-- Vendor Modal -->
+<div class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40" id="vendorModal">
+<div class="bg-white p-4 rounded-xl w-96">
+<h3 class="font-semibold">Add / Edit Vendor</h3>
+<input id="vendorId" type="hidden"/>
+<label class="block mt-2 text-sm">Vendor Name</label>
+<input class="w-full border rounded px-3 py-2" id="vendorName"/>
+<label class="block mt-2 text-sm">Notes (optional)</label>
+<input class="w-full border rounded px-3 py-2" id="vendorNotes"/>
+<div class="flex gap-2 mt-3 justify-end">
+<button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="closeVendorModal()">Cancel</button>
+<button class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700" onclick="saveVendor()">Save</button>
+</div>
+</div>
+</div>
+<!-- Vehicle Modal -->
+<div class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40" id="vehicleModal">
+<div class="bg-white p-4 rounded-xl w-96">
+<h3 class="font-semibold">Add / Edit Vehicle</h3>
+<input id="vehicleId" type="hidden"/>
+<label class="block mt-2 text-sm">Vehicle Number / Name</label>
+<input class="w-full border rounded px-3 py-2" id="vehicleName"/>
+<label class="block mt-2 text-sm">Notes (optional)</label>
+<input class="w-full border rounded px-3 py-2" id="vehicleNotes"/>
+<div class="flex gap-2 mt-3 justify-end">
+<button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="closeVehicleModal()">Cancel</button>
+<button class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700" onclick="saveVehicle()">Save</button>
+</div>
+</div>
+</div>
+</section>
 </main>
-
 <!-- toast -->
-<div id="toast" class="hidden fixed bottom-6 right-6 bg-slate-800 text-white px-4 py-2 rounded shadow"></div>
-
+<div class="hidden fixed bottom-6 right-6 bg-slate-800 text-white px-4 py-2 rounded shadow" id="toast"></div>
 <!-- Supabase client import and main logic -->
 <script type="module">
+
+// --- Clear any Supabase/IndexedDB/Storage remnants before anything runs ---
+try {
+  if(window.localStorage) localStorage.clear();
+  if(window.sessionStorage) sessionStorage.clear();
+  if(window.indexedDB && indexedDB.databases) {
+    indexedDB.databases().then(dbs => { dbs.forEach(db => indexedDB.deleteDatabase(db.name)); });
+  }
+  console.log('🧹 Cleared local/session/IndexedDB caches');
+} catch(e) { console.warn('Cache clear failed', e); }
+
 /* Supabase config */
 const SUPABASE_URL = 'https://wxulwistfjspubqhidrr.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4dWx3aXN0ZmpzcHVicWhpZHJyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcxNzExNDgsImV4cCI6MjA3Mjc0NzE0OH0.y3BVIcjcx17QABUTsSkD3hAgyGhu5evILiKXbrcrBLQ';
 
 /* load supabase-js as ES module */
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
-const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: {
+    persistSession: false,
+    autoRefreshToken: false,
+    storageKey: null
+  },
+  global: {
+    headers: { 'Cache-Control': 'no-store' }
+  }
+});
+
 window.SB = sb;
 
 /* helpers */
@@ -660,7 +723,9 @@ async function handleLogin(){
 
   // Master quick-check
   if(userInput.toLowerCase()==='bhagyesh' && passInput==='bhagyesh'){
-    const s = { user:'bhagyesh', role:'Master', company_id:null, display_name:'Bhagyesh Limbad' };
+    const s = { user:'bhagyesh', role:'Master', company_id:null, display_name:'Bhagyesh Limbad', permissions: {
+      tileStart:true,tileTrips:true,tileUsers:true,tileReports:true,tileVendors:true,tileCompanies:true,tileDashboard:true,tileLocations:true
+    } };
     await saveSessionLocally(s);
     await logLogin(s.user, s.role);
     bootAfterLogin(); 
@@ -671,7 +736,8 @@ async function handleLogin(){
   const found = users.find(u => u.username.toLowerCase() === userInput.toLowerCase() && u.pass === passInput);
   if(!found) return alert('Invalid credentials');
   if(found.enabled===false) return alert('User disabled');
-  const sess = { user: found.username, role: found.role, company_id: found.company_id || null, display_name: found.display_name || found.username };
+  // Include permissions from DB when creating session
+  const sess = { user: found.username, role: found.role, company_id: found.company_id || null, display_name: found.display_name || found.username, permissions: found.permissions || {} };
   await saveSessionLocally(sess);
   await logLogin(sess.user, sess.role);
   bootAfterLogin();
@@ -702,12 +768,26 @@ async function bootAfterLogin(){
   try{ document.getElementById('debugToggleBtn').classList.remove('hidden'); }catch(e){}
 
   const s = getSessionLocally();
+  // permissions are pulled from the saved session (set during login). No DOM reads here.
   if(!s) return;
   document.getElementById('logoutBtn').classList.remove('hidden');
   document.getElementById('userLabel').textContent = s.display_name || s.user;
   document.getElementById('roleLabel').textContent = s.role;
   await applyHeader();
   go('pageHome');
+
+  // Apply per-user page permissions if present
+  const perms = s.permissions || {};
+  Object.keys(perms).forEach(key => {
+    if (perms[key]) {
+      const el = document.getElementById(key);
+      if (el) el.classList.remove('hidden');
+    } else {
+      const el = document.getElementById(key);
+      if (el) el.classList.add('hidden');
+    }
+  });
+
 }
 
 /* change password modal functions */
@@ -726,19 +806,30 @@ async function applyHeader(){
   const comps = await db_select('companies');
   const comp = s?.company_id ? comps.find(c=>c.id===s.company_id) : null;
   document.getElementById('companyTitle').textContent = comp?.name || 'BusMate';
-  document.getElementById('companySub').textContent = 'Vehicle Tracking Prototype';
+  document.getElementById('companySub').textContent = 'Welcomes You ';
+
+  // --- Update company logo in header ---
+  const logoBox = document.getElementById('logoBox');
+  if (logoBox) {
+    if (comp && comp.logo) {
+      logoBox.innerHTML = `<img src="${comp.logo}" alt="Logo" style="width:100%;height:100%;object-fit:contain;border-radius:6px;" onerror="this.src='';this.textContent='BM';">`;
+    } else {
+      logoBox.textContent = 'BM'; // fallback if no logo
+    }
+  }
+
   if(!s) return;
   document.getElementById('userLabel').textContent = s.display_name || s.user;
   document.getElementById('roleLabel').textContent = s.role;
 
   // show tiles based on role
-  ['tileCompanies','tileUsers','tileLocations','tileTrips','tileStart','tileReports'].forEach(id=>document.getElementById(id).classList.add('hidden'));
+  ['tileCompanies','tileUsers','tileLocations','tileTrips','tileStart','tileReports','tileVendors'].forEach(id=>document.getElementById(id).classList.add('hidden'));
   if(s.user==='bhagyesh' || s.role==='Master'){
-    ['tileCompanies','tileUsers','tileLocations','tileTrips','tileStart','tileReports'].forEach(id=>document.getElementById(id).classList.remove('hidden'));
+    ['tileCompanies','tileUsers','tileLocations','tileTrips','tileStart','tileReports','tileVendors'].forEach(id=>{ const el=document.getElementById(id); if(el) el.classList.remove('hidden'); });
   } else if(s.role==='Admin'){
-    ['tileUsers','tileLocations','tileTrips','tileStart','tileReports'].forEach(id=>document.getElementById(id).classList.remove('hidden'));
+    ['tileUsers','tileLocations','tileTrips','tileStart','tileReports','tileVendors'].forEach(id=>document.getElementById(id).classList.remove('hidden'));
   } else if(s.role==='Operator'){
-    ['tileStart','tileReports'].forEach(id=>document.getElementById(id).classList.remove('hidden'));
+    ['tileStart','tileReports','tileVendors'].forEach(id=>document.getElementById(id).classList.remove('hidden'));
   }
 
   const [locCount, tripCount, compCount, runCount] = await Promise.all([
@@ -758,12 +849,15 @@ function go(pageId){
   document.querySelectorAll('main section').forEach(s => s.classList.add('hidden'));
   const el = document.getElementById(pageId);
   if(el) el.classList.remove('hidden');
-  if(pageId==='pageLocations'){ setTimeout(()=>{ initLocMap(); if(locMap) try{ locMap.invalidateSize(); }catch(e){} },80); renderLocationList(); }
+  if(pageId==='pageLocations'){ setTimeout(()=>{ initLocMap(); if(locMap) try{ locMap.invalidateSize(); }catch(e){} },80); } // renderLocationList(); removed from line
   if(pageId==='pageTripSetup'){ renderAvailList(); renderPlanned(); renderTripList(); }
   if(pageId==='pageStartTrip'){ renderStartSelect(); setTimeout(()=>{ if(runMap) try{ runMap.invalidateSize(); }catch(e){} },300); }
   if(pageId==='pageReports'){ renderReports(); }
   if(pageId==='pageUsers'){ renderUserList(); }
   if(pageId==='pageMasterAdmin'){ renderCompanyList(); }
+  if(pageId==='pageFuelRequest'){ loadFuelRequestForm(); } // its load after open fuel request page
+  if(pageId==='pageVendors'){renderVendorList(),renderVehicleList();} // its loads vendor/vehicle in asset
+  if(pageId==='pageMyRequests'){loadMyRequests()}
 }
 
 /* Company CRUD */
@@ -827,6 +921,37 @@ async function deleteCompany(id){
 }
 
 /* Users */
+
+const PERM_MAP = {
+  permCompanies: 'tileCompanies',
+  permUsers: 'tileUsers',
+  permVendors: 'tileVendors',
+  permLocations: 'tileLocations',
+  permTrips: 'tileTrips',
+  permStart: 'tileStart',
+  permDashboard: 'tileDashboard',
+  permReports: 'tileReports',
+  permMyRequests: 'tileMyRequests',
+  permFuelRequest: 'tileFuelRequest',
+  permFuelApprovals: 'tileFuelApprovals'
+};
+
+
+function currentSessionPermissions(){
+  const s = getSessionLocally() || {};
+  // ensure object shape
+  return s.permissions || {};
+}
+
+function currentUserCanGrant(permKey){
+  const s = getSessionLocally();
+  if(!s) return false;
+  if(s.user === 'bhagyesh' || s.role === 'Master') return true;
+  const perms = s.permissions || {};
+  return !!perms[permKey];
+}
+
+/* Users */
 let _editingUser = null;
 async function renderUserList(){
   const wrap = document.getElementById('usersList'); wrap.innerHTML='';
@@ -845,7 +970,21 @@ async function renderUserList(){
 }
 async function openUserForm(){
   const comps = await db_select('companies'); const sel = document.getElementById('userCompanyInp'); sel.innerHTML=''; comps.forEach(c=>{ const o=document.createElement('option'); o.value=c.id; o.textContent=c.name; sel.appendChild(o); });
-  _editingUser=null; document.getElementById('userNameInp').value=''; document.getElementById('userPassInp').value=''; document.getElementById('userDisplayInp').value=''; document.getElementById('userRoleInp').value='Operator'; document.getElementById('userModal').classList.remove('hidden');
+  _editingUser=null; document.getElementById('userNameInp').value=''; document.getElementById('userPassInp').value=''; document.getElementById('userDisplayInp').value=''; document.getElementById('userRoleInp').value='Operator';
+  // initialize permission checkboxes based on current user's permissions
+  const curPerms = currentSessionPermissions();
+  Object.keys(PERM_MAP).forEach(chkId => {
+    const permKey = PERM_MAP[chkId];
+    const el = document.getElementById(chkId);
+    if(!el) return;
+    el.checked = false; // new user default
+    if(currentUserCanGrant(permKey)){
+      el.disabled = false; el.title='You can grant this permission';
+    } else {
+      el.disabled = true; el.title='You cannot grant this permission';
+    }
+  });
+  document.getElementById('userModal').classList.remove('hidden');
 }
 function closeUserModal(){ document.getElementById('userModal').classList.add('hidden'); _editingUser=null; document.getElementById('userNameInp').disabled=false; }
 async function saveUser(){
@@ -853,11 +992,25 @@ async function saveUser(){
   if(!username||!pass) return alert('Username & password required');
   try{
     const users = await db_select('users');
+    // Build permissions object but only allow granting those permissions the current user is allowed to grant
+    const permsToSave = {};
+    Object.keys(PERM_MAP).forEach(chkId => {
+      const permKey = PERM_MAP[chkId];
+      const el = document.getElementById(chkId);
+      const requested = !!(el && el.checked);
+      if(currentUserCanGrant(permKey)){
+        permsToSave[permKey] = requested;
+      } else {
+        // ensure we do not accidentally grant permissions current user doesn't have
+        permsToSave[permKey] = false;
+      }
+    });
+
     if(_editingUser){
-      await db_update('users', { pass, display_name: display, role, company_id: companyId, enabled:true }, { username: _editingUser });
+      await db_update('users', { pass, display_name: display, role, company_id: companyId, permissions: permsToSave, enabled:true }, { username: _editingUser });
     } else {
       if(users.find(u=>u.username===username)) return alert('Username exists');
-      await db_insert('users', [{ username, pass, role, company_id: companyId, enabled:true, display_name: display }]);
+      await db_insert('users', [{ username, pass, role, company_id: companyId, permissions: permsToSave, enabled:true, display_name: display }]);
     }
     closeUserModal(); await renderUserList(); toast('User saved');
   }catch(e){ console.error('saveUser', e); alert('Failed to save'); }
@@ -866,6 +1019,19 @@ async function editUser(username){
   const users = await db_select('users'); const u = users.find(x=>x.username===username); if(!u) return;
   _editingUser=username; document.getElementById('userNameInp').value=u.username; document.getElementById('userNameInp').disabled=true; document.getElementById('userPassInp').value=u.pass; document.getElementById('userDisplayInp').value=u.display_name||''; document.getElementById('userRoleInp').value=u.role;
   const comps=await db_select('companies'); const sel=document.getElementById('userCompanyInp'); sel.innerHTML=''; comps.forEach(c=>{ const o=document.createElement('option'); o.value=c.id; o.textContent=c.name; if(c.id===u.company_id) o.selected=true; sel.appendChild(o); });
+  // populate permission checkboxes from the loaded user and disable ones current user cannot grant
+  const userPerms = u.permissions || {};
+  Object.keys(PERM_MAP).forEach(chkId => {
+    const permKey = PERM_MAP[chkId];
+    const el = document.getElementById(chkId);
+    if(!el) return;
+    el.checked = !!userPerms[permKey];
+    if(currentUserCanGrant(permKey)){
+      el.disabled = false; el.title='You can grant this permission';
+    } else {
+      el.disabled = true; el.title='You cannot grant this permission';
+    }
+  });
   document.getElementById('userModal').classList.remove('hidden');
 }
 async function toggleUser(username){
@@ -1402,7 +1568,135 @@ function showHelp(){ alert('BusMate prototype — Master: bhagyesh/bhagyesh; Adm
 /* expose debug and functions for inline onclick */
 window._bm = { sb, db_select, db_insert, db_update, db_delete, runtime };
 
+
+/* Vendors & Vehicles CRUD */
+let _editingVendor = null;
+let _editingVehicle = null;
+
+async function renderVendorList(){
+  const wrap = document.getElementById('vendorList'); wrap.innerHTML='';
+  const s = getSessionLocally();
+  const vendors = await db_select('vendors');
+  const visible = (!s || s.user==='bhagyesh') ? vendors : vendors.filter(v=>v.company_id===s.company_id);
+  if(visible.length===0){ wrap.innerHTML = '<div class="text-sm text-slate-400">No vendors</div>'; return; }
+  visible.forEach(v=>{
+    const div = document.createElement('div'); div.className='list-row flex items-center justify-between';
+    div.innerHTML = `<div><div class="font-medium">${v.name}</div><div class="text-xs text-slate-500">${v.id} · ${v.notes||''}</div></div>
+      <div class="flex gap-2"><button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="editVendor('${v.id}')">Edit</button><button class="bg-red-600 px-3 py-1 rounded text-white" onclick="deleteVendor('${v.id}')">Delete</button></div>`;
+    wrap.appendChild(div);
+  });
+  // update stats
+  document.getElementById('statVendors').textContent = visible.length;
+  // refresh vehicle vendor dropdowns
+  populateVehicleVendorOptions();
+}
+
+function openVendorForm(){ _editingVendor=null; document.getElementById('vendorId').value=''; document.getElementById('vendorName').value=''; document.getElementById('vendorNotes').value=''; document.getElementById('vendorModal').classList.remove('hidden'); }
+function closeVendorModal(){ document.getElementById('vendorModal').classList.add('hidden'); _editingVendor=null; }
+
+async function saveVendor(){
+  const id = (document.getElementById('vendorId').value||'').trim();
+  const name = (document.getElementById('vendorName').value||'').trim();
+  const notes = (document.getElementById('vendorNotes').value||'').trim();
+  if(!name) return alert('Vendor name required');
+  try{
+    const s = getSessionLocally(); const companyId = (s && s.user!=='bhagyesh') ? s.company_id : null;
+    if(id){
+      await db_update('vendors', { name, notes, company_id: companyId }, { id });
+    } else {
+      await db_insert('vendors', [{ id: uid('vend'), name, notes, company_id: companyId }]);
+    }
+    closeVendorModal(); await renderVendorList(); toast('Vendor saved');
+  }catch(e){ console.error('saveVendor', e); alert('Failed to save vendor'); }
+}
+
+async function editVendor(id){
+  const rows = await db_select('vendors');
+  const data = (rows || []).find(r=>r.id===id);
+  if(!data) return alert('Vendor not found');
+  document.getElementById('vendorId').value = data.id || '';
+  document.getElementById('vendorName').value = data.name || '';
+  document.getElementById('vendorNotes').value = data.notes || '';
+  document.getElementById('vendorModal').classList.remove('hidden');
+}
+
+async function deleteVendor(id){
+  if(!confirm('Delete vendor? This will not delete vehicles automatically.')) return;
+  try{ await db_delete('vendors', { id }); await renderVendorList(); toast('Vendor deleted'); }catch(e){ console.error('deleteVendor', e); alert('Delete failed'); }
+}
+
+/* Vehicles */
+async function renderVehicleList(){
+  const wrap = document.getElementById('vehicleList'); wrap.innerHTML='';
+  const s = getSessionLocally();
+  const vehicles = await db_select('vehicles');
+  const visible = (!s || s.user==='bhagyesh') ? vehicles : vehicles.filter(v=>v.company_id===s.company_id);
+  if(visible.length===0){ wrap.innerHTML = '<div class="text-sm text-slate-400">No vehicles</div>'; document.getElementById('statVehicles').textContent = 0; return; }
+  visible.forEach(v=>{
+    const row = document.createElement('div'); row.className='list-row flex items-center justify-between';
+    row.innerHTML = `<div><div class="font-medium">${v.name}</div><div class="text-xs text-slate-500">${v.id}</div><div class="text-xs text-slate-500">${v.notes||''}</div></div>
+      <div class="flex gap-2"><button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="editVehicle('${v.id}')">Edit</button><button class="bg-red-600 px-3 py-1 rounded text-white" onclick="deleteVehicle('${v.id}')">Delete</button></div>`;
+    wrap.appendChild(row);
+  });
+  document.getElementById('statVehicles').textContent = visible.length;
+}
+
+function openVehicleForm(){ _editingVehicle=null; document.getElementById('vehicleId').value=''; document.getElementById('vehicleName').value=''; document.getElementById('vehicleNotes').value=''; populateVehicleVendorOptions(); document.getElementById('vehicleModal').classList.remove('hidden'); }
+function closeVehicleModal(){ document.getElementById('vehicleModal').classList.add('hidden'); _editingVehicle=null; }
+
+async function populateVehicleVendorOptions(){
+  // vendor dropdown removed — no-op to keep existing calls safe
+  return;
+}
+
+async function saveVehicle(){
+  const id = (document.getElementById('vehicleId').value||'').trim();
+  const name = (document.getElementById('vehicleName').value||'').trim();
+  const notes = (document.getElementById('vehicleNotes').value||'').trim();
+  if(!name) return alert('Vehicle name required');
+  try{
+    const s = getSessionLocally(); const companyId = (s && s.user!=='bhagyesh') ? s.company_id : null;
+    if(id){
+      await db_update('vehicles', { name, notes, company_id: companyId }, { id });
+    } else {
+      await db_insert('vehicles', [{ id: uid('veh'), name, notes, company_id: companyId }]);
+    }
+    closeVehicleModal(); await renderVehicleList(); toast('Vehicle saved');
+  }catch(e){ console.error('saveVehicle', e); alert('Failed to save vehicle'); }
+}
+
+async function editVehicle(id){
+  const rows = await db_select('vehicles');
+  const data = (rows || []).find(r=>r.id===id);
+  if(!data) return alert('Vehicle not found');
+  document.getElementById('vehicleId').value = data.id || '';
+  document.getElementById('vehicleName').value = data.name || '';
+  document.getElementById('vehicleNotes').value = data.notes || '';
+  document.getElementById('vehicleModal').classList.remove('hidden');
+}
+
+async function deleteVehicle(id){
+  if(!confirm('Delete vehicle?')) return;
+  try{ await db_delete('vehicles', { id }); await renderVehicleList(); toast('Vehicle deleted'); }catch(e){ console.error('deleteVehicle', e); alert('Delete failed'); }
+}
+
+
 window.handleLogin = handleLogin;
+
+/* Expose vendor/vehicle functions */
+window.openVendorForm = openVendorForm;
+window.closeVendorModal = closeVendorModal;
+window.saveVendor = saveVendor;
+window.editVendor = editVendor;
+window.deleteVendor = deleteVendor;
+window.openVehicleForm = openVehicleForm;
+window.closeVehicleModal = closeVehicleModal;
+window.saveVehicle = saveVehicle;
+window.editVehicle = editVehicle;
+window.deleteVehicle = deleteVehicle;
+window.renderVendorList = renderVendorList;
+// window.renderVehicleList = renderVehicleList;
+// window.populateVehicleVendorOptions = populateVehicleVendorOptions;
 window.showHelp = showHelp;
 window.logout = logout;
 window.go = go;
@@ -1452,18 +1746,12 @@ window.savePassword = savePassword;
 window.playUrl = playUrl;
 
 </script>
-
-
-
 <!-- ***** PATCH: runtime overrides to fix audio overlap, volume, edit/save location, live map, wake-lock ***** -->
 <script>
 // (Truncated patch comment header for brevity)
 // ... full JS patch script here ...
 </script>
 <!-- ***** END PATCH ***** -->
-
-
-
 <script>
 // Patch: Fetch latest location data from Supabase when trip starts
 const originalStartTrip = window.startTripById;
@@ -1493,9 +1781,6 @@ window.startTripById = async function(id) {
   }
 };
 </script>
-
-
-
 <script>
 // --- Enhanced Announcement Handler with Supabase Fallback ---
 window.playAnnouncementById = async function(locId){
@@ -1546,9 +1831,6 @@ window.playAnnouncementById = async function(locId){
   }
 };
 </script>
-
-
-
 <script>
 // --- Global Safe Auto Refresh Setter ---
 window.setAutoRefreshInterval = function(value){
@@ -1571,8 +1853,6 @@ window.setAutoRefreshInterval = function(value){
   }
 };
 </script>
-
-
 <script>
 // --- Global Safe End Trip Handler ---
 window.endTrip = function(){
@@ -1609,8 +1889,6 @@ console.log('✅ Trip ended via stopTrip()');
   }
 };
 </script>
-
-
 <script>
 // --- Strong Global End Trip Handler (full cleanup) ---
 window.endTrip = function(){
@@ -1712,8 +1990,6 @@ console.log('✅ Trip fully ended (cleanup complete)');
   }
 };
 </script>
-
-
 <script>
 // --- UI FIX: Hide ongoing trip layout before trip start ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -1728,8 +2004,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 </script>
-
-
 <script>
 // --- SAFETY PATCH: manualAnn fallback to prevent ReferenceError ---
 if(typeof window.manualAnn === 'undefined'){
@@ -1740,102 +2014,170 @@ if(typeof window.manualAnn === 'undefined'){
   console.log('✅ manualAnn fallback applied');
 }
 </script>
-
-
 <script>
-// --- Company Logo Fix After Login ---
-function showCompanyLogo() {
-  try {
-    const logoEl = document.getElementById('companyLogo') || (() => {
-      const img = document.createElement('img');
-      img.id = 'companyLogo';
-      img.className = 'h-10 w-auto mx-auto my-2 block';
-      document.body.prepend(img);
-      return img;
-    })();
 
-    let logoUrl = null;
-    // Try common sources where DB logo might exist
-    if (window.runtime?.org?.logo) logoUrl = window.runtime.org.logo;
-    else if (window.runtime?.active?.org?.logo) logoUrl = window.runtime.active.org.logo;
-    else if (window.user?.company?.logo) logoUrl = window.user.company.logo;
-    else if (window.company?.logo) logoUrl = window.company.logo;
+async function showCompanyLogo() {
+try {
+const logoBox = document.getElementById('logoBox');
+if (!logoBox) return;
 
-    if (logoUrl) {
-      logoEl.src = logoUrl;
-      logoEl.style.display = 'block';
-      console.log('✅ Company logo loaded:', logoUrl);
-    } else {
-      logoEl.style.display = 'none';
-      console.warn('⚠️ No company logo found in DB');
-    }
-  } catch (e) {
-    console.error('showCompanyLogo error', e);
-  }
+
+// Ensure there is an <img> inside logoBox for logo display
+let logoImg = document.getElementById('companyLogo');
+if (!logoImg) {
+logoImg = document.createElement('img');
+logoImg.id = 'companyLogo';
+logoImg.className = 'h-10 w-auto mx-auto my-2 block rounded-lg';
+logoBox.innerHTML = ''; // Clear text like 'BM'
+logoBox.appendChild(logoImg);
 }
 
-// Automatically show logo after login success
-if (typeof handleLogin === 'function') {
-  const oldLogin = handleLogin;
-  window.handleLogin = async function(...args) {
-    const res = await oldLogin.apply(this, args);
-    setTimeout(showCompanyLogo, 800);
-    return res;
-  };
+
+const s = getSessionLocally();
+if (!s || !s.company_id) {
+console.warn('⚠️ No active session or company ID found');
+logoImg.style.display = 'none';
+return;
+}
+
+
+// Fetch logo for the logged-in user's company
+const { data, error } = await SB
+.from('companies')
+.select('logo')
+.eq('id', s.company_id)
+.single();
+
+
+if (error) {
+console.error('❌ Error fetching company logo:', error);
+logoImg.style.display = 'none';
+return;
+}
+
+
+if (data && data.logo) {
+logoImg.src = data.logo;
+logoImg.alt = 'Company Logo';
+logoImg.style.display = 'block';
+console.log('✅ Company logo loaded:', data.logo);
 } else {
-  document.addEventListener('DOMContentLoaded', showCompanyLogo);
+console.warn('⚠️ Company logo not found for company:', s.company_id);
+logoImg.style.display = 'none';
 }
+} catch (e) {
+console.error('showCompanyLogo exception:', e);
+}
+}
+
+
+// Run after login completes
+if (typeof handleLogin === 'function') {
+const oldHandleLogin = handleLogin;
+window.handleLogin = async function(...args) {
+const result = await oldHandleLogin.apply(this, args);
+setTimeout(showCompanyLogo, 600);
+return result;
+};
+}
+
+
+// Also run after DOM load (in case session already exists)
+document.addEventListener('DOMContentLoaded', () => {
+const s = getSessionLocally();
+if (s && s.company_id) {
+showCompanyLogo();
+}
+});
+// // --- Company Logo Fix After Login ---
+// function showCompanyLogo() {
+//   try {
+//     const logoEl = document.getElementById('companyLogo') || (() => {
+//       const img = document.createElement('img');
+//       img.id = 'companyLogo';
+//       img.className = 'h-10 w-auto mx-auto my-2 block';
+//       document.body.prepend(img);
+//       return img;
+//     })();
+
+//     let logoUrl = null;
+//     // Try common sources where DB logo might exist
+//     if (window.runtime?.org?.logo) logoUrl = window.runtime.org.logo;
+//     else if (window.runtime?.active?.org?.logo) logoUrl = window.runtime.active.org.logo;
+//     else if (window.user?.company?.logo) logoUrl = window.user.company.logo;
+//     else if (window.company?.logo) logoUrl = window.company.logo;
+
+//     if (logoUrl) {
+//       logoEl.src = logoUrl;
+//       logoEl.style.display = 'block';
+//       console.log('✅ Company logo loaded:', logoUrl);
+//     } else {
+//       logoEl.style.display = 'none';
+//       console.warn('⚠️ No company logo found in DB');
+//     }
+//   } catch (e) {
+//     console.error('showCompanyLogo error', e);
+//   }
+// }
+
+// // Automatically show logo after login success
+// if (typeof handleLogin === 'function') {
+//   const oldLogin = handleLogin;
+//   window.handleLogin = async function(...args) {
+//     const res = await oldLogin.apply(this, args);
+//     setTimeout(showCompanyLogo, 800);
+//     return res;
+//   };
+// } else {
+//   document.addEventListener('DOMContentLoaded', showCompanyLogo);
+// }
 </script>
-
-
 <script>
 // --- Enhanced Company Logo Loader (supports location.logo) ---
-function showCompanyLogo() {
-  try {
-    const logoEl = document.getElementById('companyLogo') || (() => {
-      const img = document.createElement('img');
-      img.id = 'companyLogo';
-      img.className = 'h-10 w-auto mx-auto my-2 block';
-      document.body.prepend(img);
-      return img;
-    })();
+// function showCompanyLogo() {
+//   try {
+//     const logoEl = document.getElementById('companyLogo') || (() => {
+//       const img = document.createElement('img');
+//       img.id = 'companyLogo';
+//       img.className = 'h-10 w-auto mx-auto my-2 block';
+//       document.body.prepend(img);
+//       return img;
+//     })();
 
-    let logoUrl = null;
-    // Try all known DB sources for logo
-    if (window.runtime?.active?.location?.logo) logoUrl = window.runtime.active.location.logo;
-    else if (window.runtime?.location?.logo) logoUrl = window.runtime.location.logo;
-    else if (window.runtime?.org?.logo) logoUrl = window.runtime.org.logo;
-    else if (window.runtime?.active?.org?.logo) logoUrl = window.runtime.active.org.logo;
-    else if (window.user?.company?.logo) logoUrl = window.user.company.logo;
-    else if (window.company?.logo) logoUrl = window.company.logo;
+//     let logoUrl = null;
+//     // Try all known DB sources for logo
+//     if (window.runtime?.active?.location?.logo) logoUrl = window.runtime.active.location.logo;
+//     else if (window.runtime?.location?.logo) logoUrl = window.runtime.location.logo;
+//     else if (window.runtime?.org?.logo) logoUrl = window.runtime.org.logo;
+//     else if (window.runtime?.active?.org?.logo) logoUrl = window.runtime.active.org.logo;
+//     else if (window.user?.company?.logo) logoUrl = window.user.company.logo;
+//     else if (window.company?.logo) logoUrl = window.company.logo;
 
-    if (logoUrl) {
-      logoEl.src = logoUrl;
-      logoEl.style.display = 'block';
-      console.log('✅ Company logo loaded:', logoUrl);
-    } else {
-      logoEl.style.display = 'none';
-      console.warn('⚠️ No company logo found in DB');
-    }
-  } catch (e) {
-    console.error('showCompanyLogo error', e);
-  }
-}
+//     if (logoUrl) {
+//       logoEl.src = logoUrl;
+//       logoEl.style.display = 'block';
+//       console.log('✅ Company logo loaded:', logoUrl);
+//     } else {
+//       logoEl.style.display = 'none';
+//       console.warn('⚠️ No company logo found in DB');
+//     }
+//   } catch (e) {
+//     console.error('showCompanyLogo error', e);
+//   }
+// }
 
-// Hook into login to refresh logo after authentication
-if (typeof handleLogin === 'function') {
-  const oldLogin = handleLogin;
-  window.handleLogin = async function(...args) {
-    const res = await oldLogin.apply(this, args);
-    setTimeout(showCompanyLogo, 800);
-    return res;
-  };
-} else {
-  document.addEventListener('DOMContentLoaded', showCompanyLogo);
-}
-</script>
-
-
+// // Hook into login to refresh logo after authentication
+// if (typeof handleLogin === 'function') {
+//   const oldLogin = handleLogin;
+//   window.handleLogin = async function(...args) {
+//     const res = await oldLogin.apply(this, args);
+//     setTimeout(showCompanyLogo, 800);
+//     return res;
+//   };
+// } else {
+//   document.addEventListener('DOMContentLoaded', showCompanyLogo);
+// }
+// </script>
 <script>
 // --- Supabase Company Logo Loader (companies.logo) ---
 async function showCompanyLogo() {
@@ -1902,8 +2244,6 @@ if (typeof handleLogin === 'function') {
   document.addEventListener('DOMContentLoaded', showCompanyLogo);
 }
 </script>
-
-
 <script>
 // --- UI FIX: Show only Start Panel before trip start ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -1917,5 +2257,789 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 
-</body>
-</html>
+<script>
+async function clearAllCaches(btn){
+  try {
+    if(btn){ btn.disabled = true; btn.textContent = 'Clearing...'; }
+
+    // Clear local/session storage
+    localStorage.clear();
+    sessionStorage.clear();
+
+    // Attempt IndexedDB clear
+    if (window.indexedDB) {
+      try {
+        const dbs = await indexedDB.databases();
+        if (dbs.length > 0) {
+          await Promise.all(dbs.map(db => indexedDB.deleteDatabase(db.name)));
+          console.log('🗑️ IndexedDB cleared:', dbs.map(d => d.name));
+        }
+      } catch (err) {
+        console.warn('IndexedDB clear not supported in this mode:', err);
+      }
+    }
+
+    // Attempt cookie clear (browser-safe)
+    document.cookie.split(";").forEach(function(c) {
+      document.cookie = c.replace(/^ +/, "")
+                         .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+    });
+
+    // Reset memory
+    CURRENT_SESSION = null;
+
+    // Wait to ensure everything cleared before reload
+    setTimeout(() => {
+      alert('✅ Cache, cookies, and local data cleared. Reloading fresh...');
+      location.href = location.href.split('?')[0];
+    }, 500);
+
+    if(btn){ btn.disabled = false; btn.textContent = 'Clear Cache'; }
+  } catch (e) {
+    console.error('Cache clear failed:', e);
+    alert('⚠️ Failed to clear some cache. Try manual browser clear.');
+    if(btn){ btn.disabled = false; btn.textContent = 'Clear Cache'; }
+  }
+}
+</script>
+
+
+
+<section id="pageFuelRequest" class="hidden p-4">
+  <div class="max-w-3xl mx-auto bg-white rounded-xl shadow p-6">
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-2xl font-semibold">Fuel Request Form</h2>
+      <button onclick="go('pageHome')" class="text-sm text-blue-600 hover:underline">← Back</button>
+    </div>
+
+    <form id="fuelForm" class="grid gap-4 sm:grid-cols-2">
+      <div class="col-span-full">
+        <h3 class="text-lg font-semibold mb-2 text-gray-700">Vehicle & Vendor</h3>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Vehicle</label>
+        <select id="vehicleSelect" class="w-full p-2 border rounded" required></select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Fuel Type</label>
+        <select id="fuelTypeSelect" class="w-full p-2 border rounded" required>
+          <option value="">Select Fuel Type</option>
+          <option>Diesel</option>
+          <option>AdBlue</option>
+          <option>Petrol</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Vendor</label>
+        <select id="vendorSelect" class="w-full p-2 border rounded" required></select>
+      </div>
+
+      <div class="col-span-full">
+        <h3 class="text-lg font-semibold mb-2 text-gray-700">Fuel Details</h3>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Rate per Unit</label>
+        <input id="rateInput" type="number" step="0.01" class="w-full p-2 border rounded" required>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Consumption Unit</label>
+        <input id="consumptionInput" type="number" step="0.01" class="w-full p-2 border rounded" required>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Total</label>
+        <input id="totalInput" type="number" step="0.01" readonly class="w-full p-2 border rounded bg-gray-100">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">Running Odometer</label>
+        <input id="odometerInput" type="number" class="w-full p-2 border rounded" required>
+      </div>
+      <div class="col-span-full">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Remark</label>
+        <textarea id="remarkInput" class="w-full p-2 border rounded" rows="3"></textarea>
+      </div>
+      <div class="col-span-full">
+        <label class="block text-sm font-medium text-gray-700 mb-1">Photo Attachment</label>
+        <input id="photoInput" type="file" accept="image/*" class="block w-full border p-2 rounded">
+      </div>
+
+      <div class="col-span-full flex justify-end mt-4">
+        <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 w-full sm:w-auto">
+          Submit Fuel Request
+        </button>
+      </div>
+    </form>
+  </div>
+</section>
+
+
+
+
+
+
+
+<script>
+function getSessionLocally(){
+  try {
+    const data = localStorage.getItem('bm_session');
+    if(data){
+      return JSON.parse(data);
+    }
+  } catch(e){
+    console.error('Session load error:', e);
+  }
+  return null;
+}
+</script>
+<script>
+async function loadFuelRequestForm(){
+const vehicleSel = document.getElementById('vehicleSelect');
+  const vendorSel = document.getElementById('vendorSelect');
+  const s = getSessionLocally();
+
+  if(!s || !s.company_id){
+    alert('⚠️ Session or company not found. Please log in again.');
+    return;
+  }
+
+  const companyId = s.company_id;
+
+  try {
+    const { data: vehicles, error: vErr } = await SB
+      .from('vehicles')
+      .select('id, name')
+      .eq('company_id', companyId);
+
+    if(vErr){
+      console.error('Vehicle fetch error:', vErr);
+      vehicleSel.innerHTML = '<option value="">Select Vehicle</option><option>(Error loading vehicles)</option>';
+    } else if(!vehicles || vehicles.length === 0){
+      vehicleSel.innerHTML = '<option value="">Select Vehicle</option><option>(No vehicles found)</option>';
+    } else {
+      vehicleSel.innerHTML = '<option value="">Select Vehicle</option>' + 
+        vehicles.map(v => `<option value="${v.id}">${v.name}</option>`).join('');
+      console.log('✅ Vehicles loaded for company', companyId, vehicles);
+    }
+  } catch(e){
+    console.error('Vehicle fetch exception:', e);
+  }
+
+  try {
+    const { data: vendors, error: venErr } = await SB
+      .from('vendors')
+      .select('id, name')
+      .eq('company_id', companyId);
+
+    if(venErr){
+      console.error('Vendor fetch error:', venErr);
+      vendorSel.innerHTML = '<option value="">Select Vendor</option><option>(Error loading vendors)</option>';
+    } else if(!vendors || vendors.length === 0){
+      vendorSel.innerHTML = '<option value="">Select Vendor</option><option>(No vendors found)</option>';
+    } else {
+      vendorSel.innerHTML = '<option value="">Select Vendor</option>' + 
+        vendors.map(v => `<option value="${v.id}">${v.name}</option>`).join('');
+      console.log('✅ Vendors loaded for company', companyId, vendors);
+    }
+  } catch(e){
+    console.error('Vendor fetch exception:', e);
+  }
+
+  // Auto total calculation
+  const rate = document.getElementById('rateInput');
+  const cons = document.getElementById('consumptionInput');
+  const total = document.getElementById('totalInput');
+  rate.addEventListener('input', ()=> total.value = (rate.value * cons.value || 0).toFixed(2));
+  cons.addEventListener('input', ()=> total.value = (rate.value * cons.value || 0).toFixed(2));
+
+  // Submit handler
+  document.getElementById('fuelForm').onsubmit = async (e)=>{
+    e.preventDefault();
+    const s = getSessionLocally();
+    const photoFile = document.getElementById('photoInput').files[0];
+    let photoBase64 = '';
+    if(photoFile){
+      photoBase64 = await toBase64(photoFile);
+    }
+
+    const record = {
+      vehicle_id: vehicleSel.value,
+      fuel_type: document.getElementById('fuelTypeSelect').value,
+      vendor_id: vendorSel.value,
+      rate_per_unit: parseFloat(rate.value),
+      consumption_unit: parseFloat(cons.value),
+      odometer: parseFloat(document.getElementById('odometerInput').value),
+      remark: document.getElementById('remarkInput').value,
+      photo: photoBase64,
+      status: 'Pending Review',
+      latitude: userLat,
+      longitude: userLng,
+      created_by: s.user.toLowerCase(),
+      company_id : s.company_id
+    };
+
+    console.log('🧾 Submitting record:', record);
+
+    const { error } = await SB.from('fuel_requests').insert([record]);
+    if(error){
+      console.error('❌ Supabase Insert Error:', error);
+      alert('❌ Failed to submit fuel request: ' + error.message);
+    } else {
+      alert('✅ Fuel request submitted successfully!');
+      document.getElementById('fuelForm').reset();
+    }
+  };
+}
+
+function toBase64(file){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = ()=> resolve(reader.result);
+    reader.onerror = reject;
+  });
+}
+
+// Load form when Fuel Request page opens
+// document.addEventListener('DOMContentLoaded', ()=>{
+//   const fuelPage = document.getElementById('pageFuelRequest');
+//   if(fuelPage) loadFuelRequestForm();
+// });
+</script>
+
+
+
+
+
+<script>
+let userLat = null;
+let userLng = null;
+
+async function getUserLocation(){
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        userLat = pos.coords.latitude;
+        userLng = pos.coords.longitude;
+        console.log('📍 User location:', userLat, userLng);
+      },
+      (err) => {
+        console.warn('⚠️ Location permission denied or unavailable:', err);
+      },
+      { enableHighAccuracy: true }
+    );
+  } else {
+    console.warn('⚠️ Geolocation not supported in this browser.');
+  }
+}
+
+document.addEventListener('DOMContentLoaded', ()=> {
+  getUserLocation();
+});
+</script>
+
+
+
+<section id="pageMyRequests" class="hidden p-4">
+  <div class="max-w-5xl mx-auto bg-white rounded-xl shadow p-6">
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-2xl font-semibold">My Fuel Requests</h2>
+      <button onclick="go('pageHome')" class="text-sm text-blue-600 hover:underline">← Back</button>
+    </div>
+    <div id="myRequestsContainer" class="overflow-x-auto">
+      <table class="w-full text-sm border-collapse border border-gray-200">
+        <thead class="bg-gray-100 text-gray-700">
+          <tr>
+            <th class="border p-2">#</th>
+            <th class="border p-2">Date</th>
+            <th class="border p-2">Vehicle</th>
+            <th class="border p-2">Vendor</th>
+            <th class="border p-2">Status</th>
+            <th class="border p-2">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="myRequestsTable"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+
+
+
+<script>
+async function loadMyRequests(){
+  /* -----------------------------
+   Load My Fuel Requests
+----------------------------- */
+  const s = typeof getSessionLocally === 'function' ? getSessionLocally() : null;
+  if (!s) return alert("Please log in first");
+
+  const loginUser = (s.display_name || s.user || s.email || "").trim().toLowerCase();
+  console.log("🔑 Logged in user:", loginUser);
+
+  const page = document.getElementById("pageMyRequests");
+  if (!page) return console.warn("pageMyRequests not found");
+
+  page.innerHTML = `
+    <div class="page-back mb-3">
+      <button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="go('pageHome')">← Back</button>
+    </div>
+    <h2 class="text-lg font-semibold mb-3">My Fuel Requests</h2>
+    <div class="bg-white rounded-xl shadow p-4 overflow-x-auto">
+      <table class="min-w-full text-sm border-collapse" id="myReqTable">
+        <thead>
+          <tr class="bg-slate-100 text-left">
+            <th class="px-3 py-2 border">#</th>
+            <th class="px-3 py-2 border">Date</th>
+            <th class="px-3 py-2 border">Vehicle</th>
+            <th class="px-3 py-2 border">Odometer</th>
+            <th class="px-3 py-2 border">Vendor</th>
+            <th class="px-3 py-2 border">Status</th>
+            <th class="px-3 py-2 border text-center">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="myReqBody"></tbody>
+      </table>
+    </div>
+  `;
+
+  const tbody = page.querySelector("#myReqBody");
+  tbody.innerHTML = `<tr><td colspan="7" class="text-center py-3 text-slate-400">Loading…</td></tr>`;
+
+  try {
+    if (typeof SB === "undefined" || !SB) throw new Error("Supabase client SB not initialized");
+
+    // ✅ Load all requests first (since user column may differ)
+    const { data: allReqs, error } = await SB.from("fuel_requests").select("*").order("created_at", { ascending: false });
+    if (error) throw error;
+
+    console.log("🧾 All requests from DB:", allReqs);
+
+    // ✅ Match records if created_by includes or equals the logged-in user (case-insensitive)
+    const myReqs = (allReqs || []).filter(r => {
+      const createdBy = (r.created_by || "").trim().toLowerCase();
+      return createdBy === loginUser || createdBy.startsWith(loginUser) || loginUser.startsWith(createdBy);
+    });
+
+    console.log(`✅ Requests visible for user '${loginUser}':`, myReqs);
+
+    // ✅ Load vendor & vehicle names
+    const [vendorsRes, vehiclesRes] = await Promise.all([
+      SB.from("vendors").select("*"),
+      SB.from("vehicles").select("*")
+    ]);
+
+    const vendors = vendorsRes.data || [];
+    const vehicles = vehiclesRes.data || [];
+
+    tbody.innerHTML = "";
+
+    if (myReqs.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="7" class="text-center py-3 text-slate-500">
+            No fuel requests found for <b>${loginUser}</b>.
+          </td>
+        </tr>`;
+      return;
+    }
+
+    // ✅ Render table
+    myReqs.forEach((req, i) => {
+      const vendor = vendors.find(v => v.id === req.vendor_id);
+      const vehicle = vehicles.find(v => v.id === req.vehicle_id);
+      const status = req.status || "—";
+      const canEdit = ["pending", "pending review"].includes(status.toLowerCase());
+      const dateText = req.created_at ? new Date(req.created_at).toLocaleDateString() : "—";
+
+      const tr = document.createElement("tr");
+      tr.className = "border-b hover:bg-slate-50";
+      tr.innerHTML = `
+        <td class="px-3 py-2 border text-center">${i + 1}</td>
+        <td class="px-3 py-2 border">${dateText}</td>
+        <td class="px-3 py-2 border">${vehicle ? vehicle.name : "—"}</td>
+        <td class="px-3 py-2 border">${req.odometer || "—"}</td>
+        <td class="px-3 py-2 border">${vendor ? vendor.name : "—"}</td>
+        <td class="px-3 py-2 border">${status}</td>
+        <td class="px-3 py-2 border text-center">
+          ${
+            canEdit
+              ? `<button class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded" onclick="editFuelRequest('${req.id}')">Edit</button>`
+              : `<span class="text-slate-400 text-xs">—</span>`
+          }
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+  } catch (err) {
+    console.error("❌ loadMyRequests error:", err);
+    tbody.innerHTML = `<tr><td colspan="7" class="text-center py-3 text-red-500">Error loading requests: ${err.message}</td></tr>`;
+  }
+}
+
+/* -----------------------------
+   Edit Request Function
+----------------------------- */
+async function editFuelRequest(id) {
+  try {
+    const { data, error } = await SB.from("fuel_requests").select("*").eq("id", id).single();
+    if (error || !data) return alert("Fuel request not found.");
+
+    go("pageFuelRequest");
+
+    setTimeout(() => {
+      document.getElementById("fuelId").value = data.id || "";
+      document.getElementById("fuelDate").value = data.date || "";
+      document.getElementById("fuelOdometer").value = data.odometer || "";
+      document.getElementById("fuelVendor").value = data.vendor_id || "";
+      document.getElementById("fuelVehicle").value = data.vehicle_id || "";
+    }, 300);
+  } catch (err) {
+    console.error("editFuelRequest error:", err);
+    alert("Unable to open this request for editing.");
+  }
+}
+
+  // const s = getSessionLocally();
+  // if(!s){
+  //   alert('Session expired, please log in again.');
+  //   return;
+  // }
+
+  // console.log('🔍 Logged in user:', s.user);
+  // console.log('🔍 Fetching requests for user:', s.user);
+  // const userKey = s.user.toLowerCase();
+  // const { data: requests, error } = await SB
+  //   .from('fuel_requests')
+  //   .select('id, created_at, vehicle_id, vendor_id, status, created_by')
+  //   .or(`created_by.eq.${userKey},created_by.eq.${s.user}`)
+  //   .order('created_at', { ascending: false });
+
+  // if(error){
+  //   console.error('Failed to load requests:', error);
+  //   alert('❌ Could not load requests.');
+  //   return;
+  // }
+
+  // const { data: vehicles } = await SB.from('vehicles').select('id, name');
+  // const { data: vendors } = await SB.from('vendors').select('id, name');
+
+  // const getVehicleName = id => vehicles.find(v => v.id === id)?.name || '-';
+  // const getVendorName = id => vendors.find(v => v.id === id)?.name || '-';
+
+  // const tbody = document.getElementById('myRequestsTable');
+  // tbody.innerHTML = '';
+
+  // if(!requests.length){
+  //   tbody.innerHTML = `<tr><td colspan="6" class="text-center p-3 text-gray-500">
+  //     No requests found for <b>${s.user}</b>.
+  //   </td></tr>`;
+  //   return;
+  // }
+
+  // requests.forEach((r, i)=>{
+  //   const canEdit = r.status === 'Pending Review';
+  //   tbody.innerHTML += `
+  //     <tr class="border hover:bg-gray-50">
+  //       <td class="border p-2 text-center">${i+1}</td>
+  //       <td class="border p-2">${new Date(r.created_at).toLocaleDateString()}</td>
+  //       <td class="border p-2">${getVehicleName(r.vehicle_id)}</td>
+  //       <td class="border p-2">${getVendorName(r.vendor_id)}</td>
+  //       <td class="border p-2 text-center">${r.status}</td>
+  //       <td class="border p-2 text-center">
+  //         ${canEdit 
+  //           ? `<button onclick="editFuelRequest(${r.id})" class="text-blue-600 hover:underline">Edit</button>` 
+  //           : `<span class="text-gray-400">Locked</span>`
+  //         }
+  //       </td>
+  //     </tr>
+  //   `;
+  // });
+
+async function editFuelRequest(id){
+  const { data, error } = await SB.from('fuel_requests').select('*').eq('id', id).single();
+  if(error){ 
+    alert('Could not fetch request for editing.'); 
+    return; 
+  }
+
+  // Fill form fields for editing
+  document.getElementById('vehicleSelect').value = data.vehicle_id;
+  document.getElementById('fuelTypeSelect').value = data.fuel_type;
+  document.getElementById('vendorSelect').value = data.vendor_id;
+  document.getElementById('rateInput').value = data.rate_per_unit;
+  document.getElementById('consumptionInput').value = data.consumption_unit;
+  document.getElementById('totalInput').value = (data.rate_per_unit * data.consumption_unit).toFixed(2);
+  document.getElementById('odometerInput').value = data.odometer;
+  document.getElementById('remarkInput').value = data.remark;
+
+  go('pageFuelRequest');
+  alert('You can now edit and re-submit this fuel request.');
+}
+</script>
+
+
+</body></html>
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
+<!-- padding line for 2k requirement -->
