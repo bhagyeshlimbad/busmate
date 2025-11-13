@@ -1,9 +1,9 @@
 <!--
 ====================================================================================
-🚌 SHREE RAMKRUPA TRAVELS - BUSMATE WEB APPLICATION (index_fixed_final.html)
+🚌 BUSMATE WEB APPLICATION 
 ====================================================================================
 Version: Final Production Build
-Author: Bhagyesh Limbad & ChatGPT GPT-5
+Author: Bhagyesh Limbad
 
 🔧 Functional Summary:
 - Full Supabase integration (no localStorage)
@@ -196,8 +196,8 @@ window.playAnnouncementById = playAnnouncementById;
 </div>
 </div>
 <div class="flex items-center gap-4">
-<div class="text-sm" id="roleLabel"></div>
-<div class="text-sm">Welcome <span id="userLabel">Guest</span></div>
+<div class="text-sm" id="roleLabel" style="display: none;"></div>
+<div class="text-sm">Welcome,  <span id="userLabel">Guest</span></div>
 <button class="hidden bg-white text-blue-600 px-3 py-1 rounded" id="logoutBtn" onclick="logout()">Logout</button>
 <button class="ml-2 px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm" id="clearCacheBtn" onclick="clearAllCaches(this)">
   Clear Cache
@@ -217,14 +217,14 @@ window.playAnnouncementById = playAnnouncementById;
 </div>
 <div class="mt-6 space-y-3">
 <label class="block text-sm">Username</label>
-<input class="w-full rounded-lg border px-3 py-2" id="loginUser" placeholder="bhagyesh / admin / operator"/>
+<input class="w-full rounded-lg border px-3 py-2" id="loginUser" placeholder="Enter Your Username"/>
 <label class="block text-sm">Password</label>
-<input class="w-full rounded-lg border px-3 py-2" id="loginPass" placeholder="password" type="password"/>
+<input class="w-full rounded-lg border px-3 py-2" id="loginPass" placeholder="Enter Your Password" type="password"/>
 <div class="flex gap-2 mt-4">
 <button class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700" id="loginBtn" onclick="handleLogin()">Login</button>
 <button class="bg-slate-100 px-4 py-2 rounded hover:bg-slate-200" id="helpBtn" onclick="showHelp()">Help</button>
 </div>
-<div class="text-xs text-slate-400 mt-3">Managed by: <a class="underline" href="mailto:bhagyeshlimbad@gmail.com">bhagyeshlimbad@gmail.com</a></div>
+<div class="text-xs text-slate-400 mt-3 text-center">Design & Developed by: <a class="underline" href="mailto:bhagyeshlimbad@gmail.com">bhagyeshlimbad@gmail.com</a></div>
 </div>
 </div>
 </section>
@@ -2091,95 +2091,7 @@ if (s && s.company_id) {
 showCompanyLogo();
 }
 });
-// // --- Company Logo Fix After Login ---
-// function showCompanyLogo() {
-//   try {
-//     const logoEl = document.getElementById('companyLogo') || (() => {
-//       const img = document.createElement('img');
-//       img.id = 'companyLogo';
-//       img.className = 'h-10 w-auto mx-auto my-2 block';
-//       document.body.prepend(img);
-//       return img;
-//     })();
-
-//     let logoUrl = null;
-//     // Try common sources where DB logo might exist
-//     if (window.runtime?.org?.logo) logoUrl = window.runtime.org.logo;
-//     else if (window.runtime?.active?.org?.logo) logoUrl = window.runtime.active.org.logo;
-//     else if (window.user?.company?.logo) logoUrl = window.user.company.logo;
-//     else if (window.company?.logo) logoUrl = window.company.logo;
-
-//     if (logoUrl) {
-//       logoEl.src = logoUrl;
-//       logoEl.style.display = 'block';
-//       console.log('✅ Company logo loaded:', logoUrl);
-//     } else {
-//       logoEl.style.display = 'none';
-//       console.warn('⚠️ No company logo found in DB');
-//     }
-//   } catch (e) {
-//     console.error('showCompanyLogo error', e);
-//   }
-// }
-
-// // Automatically show logo after login success
-// if (typeof handleLogin === 'function') {
-//   const oldLogin = handleLogin;
-//   window.handleLogin = async function(...args) {
-//     const res = await oldLogin.apply(this, args);
-//     setTimeout(showCompanyLogo, 800);
-//     return res;
-//   };
-// } else {
-//   document.addEventListener('DOMContentLoaded', showCompanyLogo);
-// }
 </script>
-<script>
-// --- Enhanced Company Logo Loader (supports location.logo) ---
-// function showCompanyLogo() {
-//   try {
-//     const logoEl = document.getElementById('companyLogo') || (() => {
-//       const img = document.createElement('img');
-//       img.id = 'companyLogo';
-//       img.className = 'h-10 w-auto mx-auto my-2 block';
-//       document.body.prepend(img);
-//       return img;
-//     })();
-
-//     let logoUrl = null;
-//     // Try all known DB sources for logo
-//     if (window.runtime?.active?.location?.logo) logoUrl = window.runtime.active.location.logo;
-//     else if (window.runtime?.location?.logo) logoUrl = window.runtime.location.logo;
-//     else if (window.runtime?.org?.logo) logoUrl = window.runtime.org.logo;
-//     else if (window.runtime?.active?.org?.logo) logoUrl = window.runtime.active.org.logo;
-//     else if (window.user?.company?.logo) logoUrl = window.user.company.logo;
-//     else if (window.company?.logo) logoUrl = window.company.logo;
-
-//     if (logoUrl) {
-//       logoEl.src = logoUrl;
-//       logoEl.style.display = 'block';
-//       console.log('✅ Company logo loaded:', logoUrl);
-//     } else {
-//       logoEl.style.display = 'none';
-//       console.warn('⚠️ No company logo found in DB');
-//     }
-//   } catch (e) {
-//     console.error('showCompanyLogo error', e);
-//   }
-// }
-
-// // Hook into login to refresh logo after authentication
-// if (typeof handleLogin === 'function') {
-//   const oldLogin = handleLogin;
-//   window.handleLogin = async function(...args) {
-//     const res = await oldLogin.apply(this, args);
-//     setTimeout(showCompanyLogo, 800);
-//     return res;
-//   };
-// } else {
-//   document.addEventListener('DOMContentLoaded', showCompanyLogo);
-// }
-// </script>
 <script>
 // --- Supabase Company Logo Loader (companies.logo) ---
 async function showCompanyLogo() {
@@ -2311,7 +2223,7 @@ async function clearAllCaches(btn){
   <div class="max-w-3xl mx-auto bg-white rounded-xl shadow p-6">
     <div class="flex justify-between items-center mb-4">
       <h2 class="text-2xl font-semibold">Fuel Request Form</h2>
-      <button onclick="go('pageHome')" class="text-sm text-blue-600 hover:underline">← Back</button>
+      <button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="go('pageHome')">← Back</button>
     </div>
 
     <form id="fuelForm" class="grid gap-4 sm:grid-cols-2">
@@ -2375,9 +2287,281 @@ async function clearAllCaches(btn){
 
 
 
+ <!-- Edit Fuel Request Modal -->
+<div class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40" id="editFuelModal">
+  <div class="bg-white p-4 rounded-xl w-[720px] max-w-full">
+    <h3 class="font-semibold">Edit Fuel Request</h3>
+    <input type="hidden" id="editFuelId" />
 
+    <div class="grid grid-cols-2 gap-3 mt-3">
+      <div>
+        <label class="block text-sm">Vehicle</label>
+        <select id="editVehicleSelect" class="w-full p-2 border rounded"></select>
+      </div>
 
+      <div>
+        <label class="block text-sm">Fuel Type</label>
+        <select id="editFuelTypeSelect" class="w-full p-2 border rounded">
+          <option value="">Select Fuel Type</option>
+          <option>Diesel</option>
+          <option>AdBlue</option>
+          <option>Petrol</option>
+        </select>
+      </div>
 
+      <div>
+        <label class="block text-sm">Vendor</label>
+        <select id="editVendorSelect" class="w-full p-2 border rounded"></select>
+      </div>
+
+      <div>
+        <label class="block text-sm">Rate per Unit</label>
+        <input id="editRateInput" type="number" step="0.01" class="w-full p-2 border rounded">
+      </div>
+
+      <div>
+        <label class="block text-sm">Consumption Unit</label>
+        <input id="editConsumptionInput" type="number" step="0.01" class="w-full p-2 border rounded">
+      </div>
+
+      <div>
+        <label class="block text-sm">Total</label>
+        <input id="editTotalInput" type="number" step="0.01" readonly class="w-full p-2 border rounded bg-gray-100">
+      </div>
+
+      <div>
+        <label class="block text-sm">Running Odometer</label>
+        <input id="editOdometerInput" type="number" class="w-full p-2 border rounded">
+      </div>
+
+      <div>
+        <label class="block text-sm">Status</label>
+        <select id="editStatusSelect" class="w-full p-2 border rounded">
+          <option>Pending</option>
+          <option>Pending Review</option>
+          <option>Approved</option>
+          <option>Rejected</option>
+        </select>
+      </div>
+
+      <div class="col-span-full">
+        <label class="block text-sm">Remark</label>
+        <textarea id="editRemarkInput" class="w-full p-2 border rounded" rows="3"></textarea>
+      </div>
+
+      <div class="col-span-full">
+        <label class="block text-sm">Photo (preview / replace / remove)</label>
+        <div class="mt-2 flex gap-3 items-start">
+          <div id="editPhotoPreview" class="w-36 h-24 bg-slate-100 rounded overflow-hidden flex items-center justify-center text-slate-400">
+            No photo
+          </div>
+          <div class="flex-1">
+            <input id="editPhotoInput" type="file" accept="image/*" class="block w-full border p-2 rounded">
+            <div class="mt-2 flex gap-2">
+              <button id="editRemovePhotoBtn" class="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700" onclick="removeEditPhoto()" type="button">Remove Photo</button>
+              <button id="editClearSelectionBtn" class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" type="button" onclick="document.getElementById('editPhotoInput').value='';">Clear Selection</button>
+            </div>
+            <div class="text-xs text-slate-500 mt-2">You can replace the existing photo by choosing a new file.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="flex gap-2 mt-4 justify-end">
+      <button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="closeEditFuelModal()">Cancel</button>
+      <button id="saveEditFuelBtn" class="bg-blue-600 text-white px-4 py-1 rounded hover:bg-blue-700" onclick="saveEditFuelRequest()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* Helper to convert stored base64 (without data:) to data URL for preview
+   If your DB already stores data:... prefix, base64ToDataUrl will handle both.
+*/
+function dataUrlFromBase64(b64) {
+  if (!b64) return null;
+  const s = String(b64).trim();
+  return s.startsWith("data:") ? s : "data:image/jpeg;base64," + s;
+}
+
+/* close modal helper */
+function closeEditFuelModal(){
+  document.getElementById('editFuelModal').classList.add('hidden');
+  // clear fields
+  document.getElementById('editFuelId').value = '';
+  document.getElementById('editPhotoPreview').innerHTML = 'No photo';
+  document.getElementById('editPhotoInput').value = '';
+  // reset remove flag
+  window._editFuel_removePhoto = false;
+}
+
+/* open modal & load full request by id (includes photo base64) */
+async function openEditFuelRequest(id){
+  try{
+    if(!id) return alert('Invalid request id');
+    // show modal immediately (spinner could be added)
+    document.getElementById('editFuelModal').classList.remove('hidden');
+
+    // loads vendors and vehicles for selects
+    const [vendorsRes, vehiclesRes] = await Promise.all([
+      SB.from('vendors').select('id,name').order('name', { ascending: true }),
+      SB.from('vehicles').select('id,name').order('name', { ascending: true })
+    ]);
+    const vendors = vendorsRes.data || [];
+    const vehicles = vehiclesRes.data || [];
+
+    // populate selects
+    const vendorSel = document.getElementById('editVendorSelect');
+    const vehicleSel = document.getElementById('editVehicleSelect');
+    vendorSel.innerHTML = '<option value="">Select Vendor</option>' + (vendors.map(v => `<option value="${v.id}">${v.name}</option>`).join(''));
+    vehicleSel.innerHTML = '<option value="">Select Vehicle</option>' + (vehicles.map(v => `<option value="${v.id}">${v.name}</option>`).join(''));
+
+    // fetch the full fuel request row (including photo)
+    const { data, error } = await SB.from('fuel_requests').select('*').eq('id', id).single();
+    if(error || !data) {
+      console.error('Could not load fuel request:', error);
+      alert('Could not load fuel request for editing.');
+      closeEditFuelModal();
+      return;
+    }
+
+    // fill values
+    document.getElementById('editFuelId').value = data.id || '';
+    document.getElementById('editVehicleSelect').value = data.vehicle_id || '';
+    document.getElementById('editFuelTypeSelect').value = data.fuel_type || '';
+    document.getElementById('editVendorSelect').value = data.vendor_id || '';
+    document.getElementById('editRateInput').value = data.rate_per_unit ?? '';
+    document.getElementById('editConsumptionInput').value = data.consumption_unit ?? '';
+    document.getElementById('editTotalInput').value = data.total ?? '';
+    document.getElementById('editOdometerInput').value = data.odometer ?? '';
+    document.getElementById('editRemarkInput').value = data.remark || data.remarks || '';
+    document.getElementById('editStatusSelect').value = data.status || 'Pending';
+
+    // photo handling: DB uses base64 string under fuel_requests.photo
+    window._editFuel_originalPhoto = data.photo || ''; // store original
+    window._editFuel_currentPhotoBase64 = data.photo || ''; // current working copy
+    window._editFuel_removePhoto = false;
+
+    // preview
+    const preview = document.getElementById('editPhotoPreview');
+    if(window._editFuel_currentPhotoBase64){
+      const src = dataUrlFromBase64(window._editFuel_currentPhotoBase64);
+      preview.innerHTML = `<img src="${src}" class="w-full h-full object-cover cursor-zoom-in" onclick="showImageFullscreen('${src}')">`;
+    } else {
+      preview.innerHTML = 'No photo';
+    }
+
+    // wire photo input change -> preview & base64
+    const photoInput = document.getElementById('editPhotoInput');
+    photoInput.onchange = async (ev) => {
+      const file = ev.target.files && ev.target.files[0];
+      if(!file) return;
+      try {
+        const b64 = await toBase64(file); // existing helper in your file
+        // toBase64 returns data:... so strip prefix before saving in DB? We keep full data:... or strip depending on your storage.
+        // You said DB stores base64 string under fuel_requests.photo — keep it consistent:
+        // If DB currently stores raw base64 without data:, strip prefix:
+        const raw = String(b64).startsWith('data:') ? b64.split(',')[1] : b64;
+        window._editFuel_currentPhotoBase64 = raw;
+        window._editFuel_removePhoto = false; // ensure not flagged for remove
+        const src = dataUrlFromBase64(raw);
+        preview.innerHTML = `<img src="${src}" class="w-full h-full object-cover cursor-zoom-in" onclick="showImageFullscreen('${src}')">`;
+      } catch(e){
+        console.error('Photo read error', e);
+        alert('Could not read selected photo');
+      }
+    };
+
+    // recalc total when rate/consumption change
+    const rateEl = document.getElementById('editRateInput');
+    const consEl = document.getElementById('editConsumptionInput');
+    const totalEl = document.getElementById('editTotalInput');
+    function recalcTotal(){ const r = parseFloat(rateEl.value)||0; const c = parseFloat(consEl.value)||0; totalEl.value = (r*c).toFixed(2); }
+    rateEl.oninput = recalcTotal;
+    consEl.oninput = recalcTotal;
+
+  } catch(err){
+    console.error('openEditFuelRequest error', err);
+    alert('Error opening edit form: ' + (err.message || err));
+    closeEditFuelModal();
+  }
+}
+
+/* remove photo from preview & mark for deletion */
+function removeEditPhoto(){
+  // mark for removal on save
+  window._editFuel_currentPhotoBase64 = '';
+  window._editFuel_removePhoto = true;
+  document.getElementById('editPhotoPreview').innerHTML = 'No photo';
+  document.getElementById('editPhotoInput').value = '';
+}
+
+/* Save edited fuel request */
+async function saveEditFuelRequest(){
+  try{
+    const btn = document.getElementById('saveEditFuelBtn');
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+
+    const id = document.getElementById('editFuelId').value;
+    if(!id) throw new Error('Missing request id');
+    const payload = {
+      vehicle_id: document.getElementById('editVehicleSelect').value || null,
+      fuel_type: document.getElementById('editFuelTypeSelect').value || null,
+      vendor_id: document.getElementById('editVendorSelect').value || null,
+      rate_per_unit: (document.getElementById('editRateInput').value || '') === '' ? null : parseFloat(document.getElementById('editRateInput').value),
+      consumption_unit: (document.getElementById('editConsumptionInput').value || '') === '' ? null : parseFloat(document.getElementById('editConsumptionInput').value),
+      // total: (document.getElementById('editTotalInput').value || '') === '' ? null : parseFloat(document.getElementById('editTotalInput').value),
+      odometer: (document.getElementById('editOdometerInput').value || '') === '' ? null : parseFloat(document.getElementById('editOdometerInput').value),
+      remark: document.getElementById('editRemarkInput').value || '',
+      status: document.getElementById('editStatusSelect').value || 'Pending'
+    };
+
+    // photo logic: if remove flag -> set photo to empty string (or null). If replaced -> set new base64.
+    if(window._editFuel_removePhoto){
+      payload.photo = ''; // remove photo - your DB may prefer null; change to null if needed
+    } else if(window._editFuel_currentPhotoBase64){
+      // ensure we store raw base64 (without data:) because original said it's stored as base64 string under fuel_requests.photo
+      const raw = String(window._editFuel_currentPhotoBase64).startsWith('data:') ? window._editFuel_currentPhotoBase64.split(',')[1] : window._editFuel_currentPhotoBase64;
+      payload.photo = raw;
+    } else {
+      // don't include photo field in update to preserve existing (but we set earlier _editFuel_removePhoto false and current maybe empty)
+      // To preserve original, do nothing
+    }
+
+    // perform update
+    const { data, error } = await SB.from('fuel_requests').update(payload).eq('id', id).select().single();
+    if(error){
+      console.error('Update error', error);
+      throw error;
+    }
+
+    // success
+    console.log('Request updated');
+    closeEditFuelModal();
+
+    // refresh my requests table
+    if(typeof loadMyRequests === 'function') loadMyRequests();
+
+  }catch(err){
+    console.error('saveEditFuelRequest error', err);
+    alert('Failed to save: ' + (err.message || err));
+  } finally {
+    const btn = document.getElementById('saveEditFuelBtn');
+    if(btn){ btn.disabled = false; btn.textContent = 'Save'; }
+  }
+}
+/* -----------------------------
+   Edit Request Function
+----------------------------- */
+/* convenience: make edit button call this - you may replace existing editFuelRequest calls */
+async function editFuelRequest_open(id){
+  // wrapper so your existing onclick can call editFuelRequest_open
+  await openEditFuelRequest(id);
+}
+</script>
+
+<!-- End of the Section -->
 
 <script>
 function getSessionLocally(){
@@ -2541,18 +2725,23 @@ document.addEventListener('DOMContentLoaded', ()=> {
   <div class="max-w-5xl mx-auto bg-white rounded-xl shadow p-6">
     <div class="flex justify-between items-center mb-4">
       <h2 class="text-2xl font-semibold">My Fuel Requests</h2>
-      <button onclick="go('pageHome')" class="text-sm text-blue-600 hover:underline">← Back</button>
+      <button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="go('pageHome')">← Back</button>
     </div>
     <div id="myRequestsContainer" class="overflow-x-auto">
       <table class="w-full text-sm border-collapse border border-gray-200">
         <thead class="bg-gray-100 text-gray-700">
           <tr>
-            <th class="border p-2">#</th>
-            <th class="border p-2">Date</th>
-            <th class="border p-2">Vehicle</th>
-            <th class="border p-2">Vendor</th>
-            <th class="border p-2">Status</th>
-            <th class="border p-2">Actions</th>
+            <tr class="bg-slate-100 text-left">
+            <th class="px-3 py-2 border">#</th>
+            <th class="px-3 py-2 border">Request No.</th>
+            <th class="px-3 py-2 border">Date</th>
+            <th class="px-3 py-2 border">Vehicle</th>
+            <th class="px-3 py-2 border">Odometer</th>
+            <th class="px-3 py-2 border">Type</th>
+            <th class="px-3 py-2 border">Vendor</th>
+            <th class="px-3 py-2 border">Status</th>
+            <th class="px-3 py-2 border">Remarks</th>
+            <th class="px-3 py-2 border text-center">Actions</th>
           </tr>
         </thead>
         <tbody id="myRequestsTable"></tbody>
@@ -2561,31 +2750,28 @@ document.addEventListener('DOMContentLoaded', ()=> {
   </div>
 </section>
 
-
-
-
 <script>
 async function loadMyRequests(){
   /* -----------------------------
    Load My Fuel Requests
 ----------------------------- */
-const s = typeof getSessionLocally === 'function' ? getSessionLocally() : null;
+
+const s = typeof getSessionLocally === "function" ? getSessionLocally() : null;
   if (!s) return alert("Please log in first");
 
   const loginUser = (s.display_name || s.user || s.email || "").trim().toLowerCase();
-  const shortKey = loginUser.charAt(0);
-  console.log("🔑 Logged in user:", loginUser, "| short key:", shortKey);
 
   const page = document.getElementById("pageMyRequests");
   if (!page) return console.warn("pageMyRequests not found");
 
+  // ---- PAGE STRUCTURE ----
   page.innerHTML = `
     <div class="page-back mb-3">
       <button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="go('pageHome')">← Back</button>
     </div>
     <h2 class="text-lg font-semibold mb-3">My Fuel Requests</h2>
     <div class="bg-white rounded-xl shadow p-4 overflow-x-auto">
-      <table class="min-w-full text-sm border-collapse" id="myReqTable">
+      <table class="min-w-full text-sm border-collapse">
         <thead>
           <tr class="bg-slate-100 text-left">
             <th class="px-3 py-2 border">#</th>
@@ -2593,125 +2779,125 @@ const s = typeof getSessionLocally === 'function' ? getSessionLocally() : null;
             <th class="px-3 py-2 border">Date</th>
             <th class="px-3 py-2 border">Vehicle</th>
             <th class="px-3 py-2 border">Odometer</th>
+            <th class="px-3 py-2 border">Type</th>
             <th class="px-3 py-2 border">Vendor</th>
             <th class="px-3 py-2 border">Status</th>
             <th class="px-3 py-2 border">Remarks</th>
             <th class="px-3 py-2 border text-center">Actions</th>
           </tr>
         </thead>
-        <tbody id="myReqBody"></tbody>
+        <tbody id="myReqBody">
+          <tr><td colspan="10" class="text-center py-3 text-slate-400">Loading…</td></tr>
+        </tbody>
       </table>
     </div>
   `;
 
-  const tbody = page.querySelector("#myReqBody");
-  tbody.innerHTML = `<tr><td colspan="9" class="text-center py-3 text-slate-400">Loading…</td></tr>`;
+  const tbody = document.getElementById("myReqBody");
 
   try {
-    if (typeof SB === 'undefined' || !SB) throw new Error("Supabase client SB not initialized");
+    if (!SB) throw new Error("Supabase not initialized");
 
-    // ✅ Step 1: Load likely matching rows (by first letter)
+    // ---- FETCH ONLY NECESSARY FIELDS (NO PHOTOS) ----
+  const shortKey = loginUser.charAt(0);
+  console.log("🔑 Logged in user:", loginUser, "| short key:", shortKey);
+
     const { data: rawReqs, error } = await SB
       .from("fuel_requests")
-      .select("*")
+      .select(`
+        id,
+        created_at,
+        vehicle_id,
+        vendor_id,
+        odometer,
+        fuel_type,
+        status,
+        remark,
+        created_by,
+        company_id
+      `)
       .ilike("created_by", `${shortKey}%`)
       .order("created_at", { ascending: false });
 
     if (error) throw error;
 
-    console.log("🧾 Raw fetched rows:", rawReqs?.length || 0);
+    console.log(`🧾 Loaded ${rawReqs?.length || 0} rows for ${loginUser}`);
 
-    // ✅ Step 2: Case-insensitive trim-safe match in JS
-    const myReqs = (rawReqs || []).filter(r => {
-      const createdBy = (r.created_by || "").trim().toLowerCase();
-      return (
-        createdBy === loginUser ||
-        createdBy.startsWith(loginUser) ||
-        loginUser.startsWith(createdBy)
-      );
-    });
+    const myReqs = rawReqs || [];
 
-    console.log(`✅ Filtered requests for '${loginUser}':`, myReqs);
-
-    // ✅ Load vendor & vehicle info
+    // ---- LOAD VENDORS & VEHICLES ----
     const [vendorsRes, vehiclesRes] = await Promise.all([
       SB.from("vendors").select("*"),
       SB.from("vehicles").select("*")
     ]);
+
     const vendors = vendorsRes.data || [];
     const vehicles = vehiclesRes.data || [];
 
     tbody.innerHTML = "";
 
-    if (!myReqs || myReqs.length === 0) {
+    // ---- NO RECORDS ----
+    if (myReqs.length === 0) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="9" class="text-center py-3 text-slate-500">
+          <td colspan="10" class="text-center py-3 text-slate-500">
             No fuel requests found for <b>${loginUser}</b>.
           </td>
         </tr>`;
       return;
     }
 
-    // ✅ Step 3: Render rows
+    // ---- RENDER TABLE ----
     myReqs.forEach((req, i) => {
       const vendor = vendors.find(v => v.id === req.vendor_id);
       const vehicle = vehicles.find(v => v.id === req.vehicle_id);
+
       const status = req.status || "—";
       const remarks = req.remarks || req.remark || "—";
       const canEdit = ["pending", "pending review"].includes(status.toLowerCase());
-      const dateText = req.created_at ? new Date(req.created_at).toLocaleDateString() : "—";
+      const dateText = req.created_at
+        ? new Date(req.created_at).toLocaleDateString()
+        : "—";
 
       const tr = document.createElement("tr");
       tr.className = "border-b hover:bg-slate-50";
+
       tr.innerHTML = `
         <td class="px-3 py-2 border text-center">${i + 1}</td>
         <td class="px-3 py-2 border">${req.id}</td>
         <td class="px-3 py-2 border">${dateText}</td>
-        <td class="px-3 py-2 border">${vehicle ? vehicle.name : "—"}</td>
+        <td class="px-3 py-2 border">${vehicle?.name || "—"}</td>
         <td class="px-3 py-2 border">${req.odometer || "—"}</td>
-        <td class="px-3 py-2 border">${vendor ? vendor.name : "—"}</td>
+        <td class="px-3 py-2 border">${req.fuel_type || "—"}</td>
+        <td class="px-3 py-2 border">${vendor?.name || "—"}</td>
         <td class="px-3 py-2 border">${status}</td>
         <td class="px-3 py-2 border">${remarks}</td>
         <td class="px-3 py-2 border text-center">
           ${
             canEdit
-              ? `<button class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded" onclick="editFuelRequest('${req.id}')">Edit</button>`
+              ? `<button class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded"
+                   onclick="editFuelRequest_open('${req.id}')">Edit</button>`
               : `<span class="text-slate-400 text-xs">—</span>`
           }
         </td>
       `;
+
       tbody.appendChild(tr);
     });
 
   } catch (err) {
     console.error("❌ loadMyRequests error:", err);
-    tbody.innerHTML = `<tr><td colspan="9" class="text-center py-3 text-red-500">Error loading requests: ${err.message}</td></tr>`;
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="10" class="text-center py-3 text-red-500">
+          Error loading requests: ${err.message}
+        </td>
+      </tr>`;
   }
 }
 
-/* -----------------------------
-   Edit Request Function
------------------------------ */
-async function editFuelRequest(id) {
-  try {
-    const { data, error } = await SB.from("fuel_requests").select("*").eq("id", id).single();
-    if (error || !data) return alert("Fuel request not found.");
 
-    go("pageFuelRequest");
 
-    setTimeout(() => {
-      document.getElementById("fuelId").value = data.id || "";
-      document.getElementById("fuelDate").value = data.date || "";
-      document.getElementById("fuelOdometer").value = data.odometer || "";
-      document.getElementById("fuelVendor").value = data.vendor_id || "";
-      document.getElementById("fuelVehicle").value = data.vehicle_id || "";
-    }, 300);
-  } catch (err) {
-    console.error("editFuelRequest error:", err);
-    alert("Unable to open this request for editing.");
-  }
-}
 
 
 async function editFuelRequest(id){
@@ -2789,8 +2975,10 @@ async function renderFuelApprovals() {
   page.classList.remove("hidden");
 
   page.innerHTML = `
-    <div class="page-back mb-3">
-      <button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="go('pageHome')">← Back</button>
+  
+    <div class="flex justify-between items-center mb-3">
+      <div><button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="go('pageHome')">← Back</button></div>
+      <div><button class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700" onclick="">All Request</button></div>
     </div>
     <h2 class="text-lg font-semibold mb-3">Pending Fuel Approvals</h2>
     <div id="approvalList" class="space-y-4"></div>
@@ -2883,6 +3071,8 @@ async function renderFuelApprovals() {
     console.error("renderFuelApprovals error:", err);
     list.innerHTML = `<div class="text-red-500 text-center py-3">Error loading approvals: ${err.message}</div>`;
   }
+
+  
 }
 
 /* Approve request - inline update (no confirm, no full refresh) */
@@ -2955,6 +3145,5 @@ async function rejectFuelRequest(id) {
 }
 
 </script>
-
-
-</body></html>
+</body>
+</html>
