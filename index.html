@@ -3180,7 +3180,7 @@ async function rejectFuelRequest(id) {
   <button class="bg-green-600 text-white px-3 py-1 rounded" onclick="exportCSV()">CSV</button>
   <button class="bg-purple-600 text-white px-3 py-1 rounded" onclick="exportExcel()">Excel</button>
   <button class="bg-red-600 text-white px-3 py-1 rounded" onclick="exportPDF()">PDF</button>
-  <button class="bg-red-700 text-white px-3 py-1 rounded" onclick="deleteSelected()">Delete Selected</button>
+  <button class="bg-red-700 text-white px-3 py-1 rounded" onclick="deleteSelected()" title="Delete Selected"><span style="font-size:18px;">🗑️</span></button>
 </div>
 
       <div class="flex gap-2">
@@ -3421,24 +3421,28 @@ function escapeHtml(str){
 }
 
 // Delete selected - async with feedback
-async function deleteSelected(){
-  const ids = [...document.querySelectorAll('.rowSelect:checked')].map(cb=>cb.dataset.id);
-  if(ids.length===0){ alert('No rows selected'); return; }
-  if(!confirm('Delete '+ids.length+' records?')) return;
-  try{
-    // disable button
-    const btn = event?.target;
-    if(btn) btn.disabled = true;
-    const { error } = await SB.from('fuel_requests').delete().in('id', ids);
-    if(error) throw error;
-    alert('Deleted '+ids.length+' records');
-    // refresh
-    await searchAllFuelRequests();
-  }catch(err){
-    console.error('Delete error', err);
-    alert('Delete failed: '+(err.message||err));
-  }finally{
-    if(event?.target) event.target.disabled = false;
+async function deleteSelected() {
+  const ids = [...document.querySelectorAll('.rowSelect:checked')].map(cb => cb.dataset.id);
+  if (!ids.length) {
+    alert("No rows selected");
+    return;
+  }
+  if (!confirm("Are you sure you want to delete " + ids.length + " records?")) {
+    return;
+  }
+  try {
+    const { error } = await SB.from("fuel_requests").delete().in("id", ids);
+    if (error) {
+      console.error("Delete error:", error);
+      alert("Delete failed: " + error.message);
+      return;
+    }
+    alert("Deleted successfully");
+    // refresh table
+    if (typeof searchAllFuelRequests === "function") searchAllFuelRequests();
+  } catch (err) {
+    console.error("Delete exception:", err);
+    alert("Delete exception: " + err.message);
   }
 }
 
@@ -3572,5 +3576,74 @@ function loadScript(src){
 }
 </script>
 
+
+<script>
+async function exportPDF() {
+  if (!(_allReqData && _allReqData.length)) {
+    alert("No data to export");
+    return;
+  }
+  // load jsPDF UMD if needed
+  if (typeof window.jspdf === "undefined") {
+    await loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");
+  }
+  // load autotable plugin
+  if (typeof window.jspdf_autotable === "undefined") {
+    await loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js");
+  }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: "landscape" });
+
+  const columns = [
+    { header: "Request ID", dataKey: "id" },
+    { header: "Created At", dataKey: "created_at" },
+    { header: "Vehicle", dataKey: "vehicle_name" },
+    { header: "Vendor", dataKey: "vendor_name" },
+    { header: "Fuel Type", dataKey: "fuel_type" },
+    { header: "Odometer", dataKey: "odometer" },
+    { header: "Rate", dataKey: "rate_per_unit" },
+    { header: "Consumption", dataKey: "consumption_unit" },
+    { header: "Total", dataKey: "total" },
+    { header: "Status", dataKey: "status" },
+    { header: "Remark", dataKey: "remark" },
+    { header: "Created By", dataKey: "created_by" },
+    { header: "Approved By", dataKey: "approved_by" },
+    { header: "Approved At", dataKey: "approved_at" }
+  ];
+
+  const rows = _allReqData.map(r => {
+    const obj = {};
+    columns.forEach(c => {
+      const v = r[c.dataKey];
+      if (c.dataKey && /at$/.test(c.dataKey)) {
+        obj[c.dataKey] = v ? new Date(v).toLocaleString() : "";
+      } else {
+        obj[c.dataKey] = v ?? "";
+      }
+    });
+    return obj;
+  });
+
+  doc.text("Fuel Requests Report", 14, 10);
+
+  // Build table body as array of arrays
+  const body = rows.map(row => columns.map(c => String(row[c.dataKey] ?? "")));
+
+  // AutoTable call (plugin attaches to jsPDF)
+  doc.autoTable({
+    head: [columns.map(c => c.header)],
+    body: body,
+    startY: 20,
+    styles: { fontSize: 8 },
+    headStyles: { fillColor: [41, 128, 185] },
+    theme: "striped",
+    didDrawPage: function (data) {}
+  });
+
+  const filename = "fuel_requests_" + new Date().toISOString().replace(/[:.-]/g, "") + ".pdf";
+  doc.save(filename);
+}
+</script>
 </body>
 </html>
