@@ -3002,7 +3002,7 @@ async function renderFuelApprovals() {
   
     <div class="flex justify-between items-center mb-3">
       <div><button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="go('pageHome')">← Back</button></div>
-      <div><button class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700" onclick="">All Request</button></div>
+      <div><button class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700" onclick="go('pageAllRequests')">All Request</button></div>
     </div>
     <h2 class="text-lg font-semibold mb-3">Pending Fuel Approvals</h2>
     <div id="approvalList" class="space-y-4"></div>
@@ -3169,5 +3169,408 @@ async function rejectFuelRequest(id) {
 }
 
 </script>
+
+<!-- All Requests Page Added -->
+
+<section id="pageAllRequests" class="hidden p-4">
+  <div class="max-w-6xl mx-auto bg-white rounded-xl shadow p-6">
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-2xl font-semibold">All Fuel Requests Report</h2>
+<div class="flex gap-2">
+  <button class="bg-green-600 text-white px-3 py-1 rounded" onclick="exportCSV()">CSV</button>
+  <button class="bg-purple-600 text-white px-3 py-1 rounded" onclick="exportExcel()">Excel</button>
+  <button class="bg-red-600 text-white px-3 py-1 rounded" onclick="exportPDF()">PDF</button>
+  <button class="bg-red-700 text-white px-3 py-1 rounded" onclick="deleteSelected()">Delete Selected</button>
+</div>
+
+      <div class="flex gap-2">
+        <button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="go('pageFuelApprovals')">← Back</button>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-3 items-end mb-4">
+      <div>
+        <label class="block text-sm text-slate-600">From (Created At)</label>
+        <input type="date" id="allFromDate" class="w-full p-2 border rounded">
+      </div>
+      <div>
+        <label class="block text-sm text-slate-600">To (Created At)</label>
+        <input type="date" id="allToDate" class="w-full p-2 border rounded">
+      </div>
+      <div class="md:col-span-2 flex gap-2">
+        <button id="allSearchBtn" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700" onclick="searchAllFuelRequests()">Search</button>
+        <button id="allClearBtn" class="bg-gray-200 px-4 py-2 rounded hover:bg-gray-300" onclick="clearAllFilters()">Clear</button>
+      </div>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table id="allReqTable" class="min-w-full text-sm border-collapse border border-gray-200">
+        <thead class="bg-gray-100 text-gray-700">
+          <tr>
+            <th class="px-3 py-2 border"><input type="checkbox" id="allSelectAll" onchange="toggleSelectAll(this)"></th>
+            <th class="px-3 py-2 border">Actions</th>
+            <th class="px-3 py-2 border">Request ID</th>
+            <th class="px-3 py-2 border">Date</th>
+            <th class="px-3 py-2 border">Vehicle</th>
+            <th class="px-3 py-2 border">Vendor</th>
+            <th class="px-3 py-2 border">Fuel Type</th>
+            <th class="px-3 py-2 border">Odometer</th>
+            <th class="px-3 py-2 border">Rate</th>
+            <th class="px-3 py-2 border">Consumption</th>
+            <th class="px-3 py-2 border">Total</th>
+            <th class="px-3 py-2 border">Status</th>
+            <th class="px-3 py-2 border">Remark</th>
+            <th class="px-3 py-2 border">Created By</th>
+            <th class="px-3 py-2 border">Created At</th>
+            <th class="px-3 py-2 border">Approved By</th>
+            <th class="px-3 py-2 border">Approved At</th>
+          </tr>
+          <tr id="allFilterRow" class="bg-white">
+            <th></th>
+            <th></th>
+            <th class="px-2 py-1 border"><input class="w-full p-1 border rounded text-sm" data-col="id" oninput="applyAllFilters()" placeholder="Search"></th>
+            <th class="px-2 py-1 border"><input class="w-full p-1 border rounded text-sm" data-col="created_at" oninput="applyAllFilters()" placeholder="YYYY-MM-DD"></th>
+            <th class="px-2 py-1 border"><input class="w-full p-1 border rounded text-sm" data-col="vehicle_name" oninput="applyAllFilters()" placeholder="Vehicle"></th>
+            <th class="px-2 py-1 border"><input class="w-full p-1 border rounded text-sm" data-col="vendor_name" oninput="applyAllFilters()" placeholder="Vendor"></th>
+            <th class="px-2 py-1 border"><input class="w-full p-1 border rounded text-sm" data-col="fuel_type" oninput="applyAllFilters()" placeholder="Type"></th>
+            <th class="px-2 py-1 border"><input class="w-full p-1 border rounded text-sm" data-col="odometer" oninput="applyAllFilters()" placeholder="Odo"></th>
+            <th class="px-2 py-1 border"><input class="w-full p-1 border rounded text-sm" data-col="rate_per_unit" oninput="applyAllFilters()" placeholder="Rate"></th>
+            <th class="px-2 py-1 border"><input class="w-full p-1 border rounded text-sm" data-col="consumption_unit" oninput="applyAllFilters()" placeholder="Consumption"></th>
+            <th class="px-2 py-1 border"><input class="w-full p-1 border rounded text-sm" data-col="total" oninput="applyAllFilters()" placeholder="Total"></th>
+            <th class="px-2 py-1 border"><input class="w-full p-1 border rounded text-sm" data-col="status" oninput="applyAllFilters()" placeholder="Status"></th>
+            <th class="px-2 py-1 border"><input class="w-full p-1 border rounded text-sm" data-col="remark" oninput="applyAllFilters()" placeholder="Remark"></th>
+            <th class="px-2 py-1 border"><input class="w-full p-1 border rounded text-sm" data-col="created_by" oninput="applyAllFilters()" placeholder="User"></th>
+            <th class="px-2 py-1 border"><input class="w-full p-1 border rounded text-sm" data-col="created_at" oninput="applyAllFilters()" placeholder="Created At"></th>
+            <th class="px-2 py-1 border"><input class="w-full p-1 border rounded text-sm" data-col="approved_by" oninput="applyAllFilters()" placeholder="Approved By"></th>
+            <th class="px-2 py-1 border"><input class="w-full p-1 border rounded text-sm" data-col="approved_at" oninput="applyAllFilters()" placeholder="Approved At"></th>
+          </tr>
+        </thead>
+        <tbody id="allReqBody"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<script>
+let _allReqData = []; // cached rows
+
+function clearAllFilters(){
+  const f = document.getElementById('allFromDate');
+  const t = document.getElementById('allToDate');
+  if(f) f.value = '';
+  if(t) t.value = '';
+  document.querySelectorAll('#allFilterRow input[data-col]').forEach(i=>i.value='');
+  _allReqData = [];
+  document.getElementById('allReqBody').innerHTML = '';
+  const selAll = document.getElementById('allSelectAll');
+  if(selAll) selAll.checked = false;
+}
+
+function toggleSelectAll(chk){
+  const checked = !!chk.checked;
+  document.querySelectorAll('#allReqBody input[type="checkbox"].rowSelect').forEach(cb=>cb.checked = checked);
+}
+
+function applyAllFilters(){
+  const filters = {};
+  document.querySelectorAll('#allFilterRow input[data-col]').forEach(inp=>{
+    const v = (inp.value||'').trim().toLowerCase();
+    if(v) filters[inp.dataset.col] = v;
+  });
+  const from = document.getElementById('allFromDate')?.value;
+  const to = document.getElementById('allToDate')?.value;
+
+  const rows = (_allReqData || []).filter(r=>{
+    if(from){
+      const d = r.created_at ? r.created_at.substring(0,10) : '';
+      if(d < from) return false;
+    }
+    if(to){
+      const d = r.created_at ? r.created_at.substring(0,10) : '';
+      if(d > to) return false;
+    }
+    for(const col in filters){
+      const val = (r[col] !== undefined && r[col] !== null) ? r[col] : '';
+      const v = String(val).toLowerCase();
+      if(!v.includes(filters[col])) return false;
+    }
+    return true;
+  });
+
+  renderAllReqRows(rows);
+}
+
+function renderAllReqRows(rows){
+  const tbody = document.getElementById('allReqBody');
+  tbody.innerHTML = '';
+  if(!rows || rows.length===0){
+    tbody.innerHTML = '<tr><td colspan="18" class="text-center py-3 text-slate-500">No records found.</td></tr>';
+    return;
+  }
+  rows.forEach((r)=>{
+    const tr = document.createElement('tr');
+    tr.className = 'border-b hover:bg-slate-50';
+    tr.innerHTML = `
+      <td class="px-2 py-2 border text-center"><input type="checkbox" class="rowSelect" data-id="${r.id}"></td>
+      <td class="px-2 py-2 border text-center"><button class="bg-blue-600 text-white px-2 py-1 rounded text-sm" onclick="editFuelRequest_open('${r.id}', false)">Edit</button></td>
+      <td class="px-2 py-2 border">${escapeHtml(r.id)}</td>
+      <td class="px-2 py-2 border">${r.created_at ? new Date(r.created_at).toLocaleString() : '—'}</td>
+      <td class="px-2 py-2 border">${escapeHtml(r.vehicle_name||'—')}</td>
+      <td class="px-2 py-2 border">${escapeHtml(r.vendor_name||'—')}</td>
+      <td class="px-2 py-2 border">${escapeHtml(r.fuel_type||'—')}</td>
+      <td class="px-2 py-2 border">${r.odometer ?? '—'}</td>
+      <td class="px-2 py-2 border">${r.rate_per_unit ?? '—'}</td>
+      <td class="px-2 py-2 border">${r.consumption_unit ?? '—'}</td>
+      <td class="px-2 py-2 border">${r.total ?? '—'}</td>
+      <td class="px-2 py-2 border">${escapeHtml(r.status||'—')}</td>
+      <td class="px-2 py-2 border">${escapeHtml(r.remark||r.remarks||'')}</td>
+      <td class="px-2 py-2 border">${escapeHtml(r.created_by||'')}</td>
+      <td class="px-2 py-2 border">${r.created_at ? new Date(r.created_at).toLocaleString() : '—'}</td>
+      <td class="px-2 py-2 border">${escapeHtml(r.approved_by||'')}</td>
+      <td class="px-2 py-2 border">${r.approved_at ? new Date(r.approved_at).toLocaleString() : '—'}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+/* Query server for rows (no photo) and prepare cached data, then render */
+async function searchAllFuelRequests(){
+  const s = typeof getSessionLocally === 'function' ? getSessionLocally() : null;
+  if(!s) return alert('Please log in first');
+  const companyId = s.company_id || s.companyid || null;
+
+  const from = document.getElementById('allFromDate').value;
+  const to = document.getElementById('allToDate').value;
+
+  try{
+    document.getElementById('allReqBody').innerHTML = '<tr><td colspan="18" class="text-center py-3 text-slate-400">Loading…</td></tr>';
+
+    // build query: select only the fields we need; exclude photo
+    let q = SB.from('fuel_requests')
+      .select(`
+        id,
+        created_at,
+        created_by,
+        approved_by,
+        approved_at,
+        vehicle_id,
+        vendor_id,
+        fuel_type,
+        odometer,
+        rate_per_unit,
+        consumption_unit,
+        total,
+        status,
+        remark,
+        company_id
+      `)
+      .order('created_at', { ascending: false });
+
+    if(companyId) q = q.eq('company_id', companyId);
+    if(from) q = q.gte('created_at', from + 'T00:00:00Z');
+    if(to) q = q.lte('created_at', to + 'T23:59:59Z');
+
+    const { data: rows, error } = await q;
+    if(error) throw error;
+    const data = rows || [];
+
+    // load vendor + vehicle names for mapping (limit to company)
+    let vendors = [];
+    let vehicles = [];
+    try {
+      const vres = await SB.from('vendors').select('id,name,company_id').eq('company_id', companyId);
+      const vhs = await SB.from('vehicles').select('id,name,company_id').eq('company_id', companyId);
+      vendors = vres.data || [];
+      vehicles = vhs.data || [];
+    } catch(e) {
+      console.warn('Could not load vendors/vehicles for mapping', e);
+    }
+
+    const vendorMap = {};
+    vendors.forEach(v => vendorMap[v.id] = v.name);
+    const vehicleMap = {};
+    vehicles.forEach(v => vehicleMap[v.id] = v.name);
+
+    _allReqData = (data || []).map(r => ({
+      ...r,
+      vehicle_name: vehicleMap[r.vehicle_id] || '',
+      vendor_name: vendorMap[r.vendor_id] || ''
+    }));
+
+    renderAllReqRows(_allReqData);
+  }catch(err){
+    console.error('searchAllFuelRequests error', err);
+    document.getElementById('allReqBody').innerHTML = '<tr><td colspan="18" class="text-center py-3 text-red-500">Error loading requests</td></tr>';
+  }
+}
+</script>
+<!-- END All Requests Page -->
+
+
+
+<script>
+// helper escape
+function escapeHtml(str){
+  if(str==null) return '';
+  return String(str)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;');
+}
+
+// Delete selected - async with feedback
+async function deleteSelected(){
+  const ids = [...document.querySelectorAll('.rowSelect:checked')].map(cb=>cb.dataset.id);
+  if(ids.length===0){ alert('No rows selected'); return; }
+  if(!confirm('Delete '+ids.length+' records?')) return;
+  try{
+    // disable button
+    const btn = event?.target;
+    if(btn) btn.disabled = true;
+    const { error } = await SB.from('fuel_requests').delete().in('id', ids);
+    if(error) throw error;
+    alert('Deleted '+ids.length+' records');
+    // refresh
+    await searchAllFuelRequests();
+  }catch(err){
+    console.error('Delete error', err);
+    alert('Delete failed: '+(err.message||err));
+  }finally{
+    if(event?.target) event.target.disabled = false;
+  }
+}
+
+// Export CSV
+function exportCSV(){
+  if(!(_allReqData && _allReqData.length)){ alert('No data to export'); return; }
+  const cols = [
+    'id','created_at','vehicle_name','vendor_name','fuel_type',
+    'odometer','rate_per_unit','consumption_unit','total',
+    'status','remark','created_by','approved_by','approved_at'
+  ];
+  const header = ['Request ID','Created At','Vehicle','Vendor','Fuel Type','Odometer','Rate','Consumption','Total','Status','Remark','Created By','Approved By','Approved At'];
+  const rows = _allReqData.map(r=>cols.map(c=>{
+    const v = r[c];
+    if(v==null) return '';
+    if(c.endsWith('_at')) return new Date(v).toLocaleString();
+    return String(v);
+  }));
+  const csv = [header.join(','), ...rows.map(r=>r.map(cell=>`"${String(cell).replace(/"/g,'""')}"`).join(','))].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const filename = 'fuel_requests_'+(new Date()).toISOString().replace(/[:.-]/g,'')+'.csv';
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+}
+
+// Export Excel using SheetJS
+async function exportExcel(){
+  if(!(_allReqData && _allReqData.length)){ alert('No data to export'); return; }
+  // load SheetJS if not present
+  if(typeof XLSX === 'undefined'){
+    await loadScript('https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js');
+  }
+  const cols = [
+    {k:'id',h:'Request ID'},
+    {k:'created_at',h:'Created At'},
+    {k:'vehicle_name',h:'Vehicle'},
+    {k:'vendor_name',h:'Vendor'},
+    {k:'fuel_type',h:'Fuel Type'},
+    {k:'odometer',h:'Odometer'},
+    {k:'rate_per_unit',h:'Rate'},
+    {k:'consumption_unit',h:'Consumption'},
+    {k:'total',h:'Total'},
+    {k:'status',h:'Status'},
+    {k:'remark',h:'Remark'},
+    {k:'created_by',h:'Created By'},
+    {k:'approved_by',h:'Approved By'},
+    {k:'approved_at',h:'Approved At'}
+  ];
+  const data = _allReqData.map(r=>{
+    const obj = {};
+    cols.forEach(c=>{
+      if(c.k && c.k.endsWith('_at')){
+        obj[c.h] = r[c.k] ? new Date(r[c.k]).toLocaleString() : '';
+      } else {
+        obj[c.h] = r[c.k] ?? '';
+      }
+    });
+    return obj;
+  });
+  const ws = XLSX.utils.json_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Fuel Requests');
+  const wbout = XLSX.write(wb, {bookType:'xlsx', type:'array'});
+  const blob = new Blob([wbout], {type:'application/octet-stream'});
+  const filename = 'fuel_requests_'+(new Date()).toISOString().replace(/[:.-]/g,'')+'.xlsx';
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+}
+
+// Export PDF using jsPDF + autoTable
+async function exportPDF(){
+  if(!(_allReqData && _allReqData.length)){ alert('No data to export'); return; }
+  if(typeof jsPDF === 'undefined' || typeof jspdf_autotable === 'undefined'){
+    await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+    await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js');
+  }
+  const { jsPDF } = window.jspdf || window;
+  const doc = new jsPDF('landscape');
+  const cols = [
+    {title:'Request ID', dataKey:'id'},
+    {title:'Created At', dataKey:'created_at'},
+    {title:'Vehicle', dataKey:'vehicle_name'},
+    {title:'Vendor', dataKey:'vendor_name'},
+    {title:'Fuel Type', dataKey:'fuel_type'},
+    {title:'Odometer', dataKey:'odometer'},
+    {title:'Rate', dataKey:'rate_per_unit'},
+    {title:'Consumption', dataKey:'consumption_unit'},
+    {title:'Total', dataKey:'total'},
+    {title:'Status', dataKey:'status'},
+    {title:'Remark', dataKey:'remark'},
+    {title:'Created By', dataKey:'created_by'},
+    {title:'Approved By', dataKey:'approved_by'},
+    {title:'Approved At', dataKey:'approved_at'}
+  ];
+  const data = _allReqData.map(r=>{
+    const obj={};
+    cols.forEach(c=>{
+      if(c.dataKey.endsWith('_at')) obj[c.dataKey] = r[c.dataKey] ? new Date(r[c.dataKey]).toLocaleString() : '';
+      else obj[c.dataKey] = r[c.dataKey] ?? '';
+    });
+    return obj;
+  });
+  doc.autoTable({
+    head: [cols.map(c=>c.title)],
+    body: data.map(row=>cols.map(c=>row[c.dataKey])),
+    styles: { fontSize: 8 },
+    startY: 20,
+    theme: 'striped'
+  });
+  const filename = 'fuel_requests_'+(new Date()).toISOString().replace(/[:.-]/g,'')+'.pdf';
+  doc.save(filename);
+}
+
+// tiny loader helper
+function loadScript(src){
+  return new Promise((res, rej)=>{
+    const s = document.createElement('script');
+    s.src = src;
+    s.onload = res;
+    s.onerror = rej;
+    document.head.appendChild(s);
+  });
+}
+</script>
+
 </body>
 </html>
