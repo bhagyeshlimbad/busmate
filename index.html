@@ -2288,10 +2288,13 @@ async function clearAllCaches(btn){
 
 
  <!-- Edit Fuel Request Modal -->
+  
 <div class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40" id="editFuelModal">
   <div class="bg-white p-4 rounded-xl w-[720px] max-w-full">
-    <h3 class="font-semibold">Edit Fuel Request</h3>
-    <input type="hidden" id="editFuelId" />
+
+    <h3 class="font-semibold">Edit Fuel Request :</h3>
+
+    <input type="hidden" id="editFuelId" />   
 
     <div class="grid grid-cols-2 gap-3 mt-3">
       <div>
@@ -2359,7 +2362,7 @@ async function clearAllCaches(btn){
             <input id="editPhotoInput" type="file" accept="image/*" class="block w-full border p-2 rounded">
             <div class="mt-2 flex gap-2">
               <button id="editRemovePhotoBtn" class="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700" onclick="removeEditPhoto()" type="button">Remove Photo</button>
-              <button id="editClearSelectionBtn" class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" type="button" onclick="document.getElementById('editPhotoInput').value='';">Clear Selection</button>
+              <!-- <button id="editClearSelectionBtn" class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" type="button" onclick="document.getElementById('editPhotoInput').value='';">Clear Selection</button> -->
             </div>
             <div class="text-xs text-slate-500 mt-2">You can replace the existing photo by choosing a new file.</div>
           </div>
@@ -2396,17 +2399,28 @@ function closeEditFuelModal(){
 }
 
 /* open modal & load full request by id (includes photo base64) */
-async function openEditFuelRequest(id){
+async function openEditFuelRequest(id, fromMyRequests = false){
+
   try{
     if(!id) return alert('Invalid request id');
     // show modal immediately (spinner could be added)
     document.getElementById('editFuelModal').classList.remove('hidden');
-
-    // loads vendors and vehicles for selects
+    const s = typeof getSessionLocally === "function" ? getSessionLocally() : null;
+    const companyId = s?.company_id || s?.companyid || null;
+    
+      // loads vendors and vehicles for selects
     const [vendorsRes, vehiclesRes] = await Promise.all([
-      SB.from('vendors').select('id,name').order('name', { ascending: true }),
-      SB.from('vehicles').select('id,name').order('name', { ascending: true })
+      SB.from('vendors')
+      .select('id,name,company_id')
+      .eq('company_id', companyId)
+      .order('name', { ascending: true }),
+
+    SB.from('vehicles')
+      .select('id,name,company_id')
+      .eq('company_id', companyId)
+      .order('name', { ascending: true })
     ]);
+
     const vendors = vendorsRes.data || [];
     const vehicles = vehiclesRes.data || [];
 
@@ -2436,6 +2450,15 @@ async function openEditFuelRequest(id){
     document.getElementById('editOdometerInput').value = data.odometer ?? '';
     document.getElementById('editRemarkInput').value = data.remark || data.remarks || '';
     document.getElementById('editStatusSelect').value = data.status || 'Pending';
+    const statusDropdown = document.getElementById('editStatusSelect');
+    if (fromMyRequests) {
+      statusDropdown.setAttribute('disabled', 'disabled');
+      statusDropdown.classList.add('bg-gray-200', 'text-gray-500', 'cursor-not-allowed');
+    } else {
+      statusDropdown.removeAttribute('disabled');
+      statusDropdown.classList.remove('bg-gray-200', 'text-gray-500', 'cursor-not-allowed');
+    }
+
 
     // photo handling: DB uses base64 string under fuel_requests.photo
     window._editFuel_originalPhoto = data.photo || ''; // store original
@@ -2555,9 +2578,9 @@ async function saveEditFuelRequest(){
    Edit Request Function
 ----------------------------- */
 /* convenience: make edit button call this - you may replace existing editFuelRequest calls */
-async function editFuelRequest_open(id){
+async function editFuelRequest_open(id, fromMyRequests = false){
   // wrapper so your existing onclick can call editFuelRequest_open
-  await openEditFuelRequest(id);
+  await openEditFuelRequest(id, fromMyRequests);
 }
 </script>
 
@@ -2876,7 +2899,7 @@ const s = typeof getSessionLocally === "function" ? getSessionLocally() : null;
           ${
             canEdit
               ? `<button class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded"
-                   onclick="editFuelRequest_open('${req.id}')">Edit</button>`
+                   onclick="editFuelRequest_open('${req.id}', true)">Edit</button>`
               : `<span class="text-slate-400 text-xs">—</span>`
           }
         </td>
@@ -2973,6 +2996,7 @@ async function renderFuelApprovals() {
   const page = ensureApprovalsSection();
   document.querySelectorAll("main section").forEach((x) => x.classList.add("hidden"));
   page.classList.remove("hidden");
+
 
   page.innerHTML = `
   
