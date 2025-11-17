@@ -3068,12 +3068,12 @@ async function renderFuelApprovals() {
       card.innerHTML = `
         <div class="flex-1">
           <div class="font-semibold text-blue-700 mb-1">Request #${req.id}</div>
-          <div class="text-sm text-slate-600">Vehicle: ${vehicle?.name || "—"}</div>
+          <div class="text-sm text-slate-600 font-bold">Vehicle: ${vehicle?.name || "—"}</div>
           <div class="text-sm text-slate-600">Fuel Type: ${req.fuel_type || "—"}</div>
-          <div class="text-sm text-slate-600">Vendor: ${vendor?.name || "—"}</div>
-          <div class="text-sm text-slate-600">Rate: ₹${req.rate_per_unit || 0}</div>
-          <div class="text-sm text-slate-600">Consumption: ${req.consumption_unit || 0}</div>
-          <div class="text-sm text-slate-600">Total: ₹${req.total_amount || 0}</div>
+          <div class="text-sm text-slate-600 font-bold">Vendor: ${vendor?.name || "—"}</div>
+          <div class="text-sm text-slate-600 font-bold">Rate: ₹${req.rate_per_unit || 0}</div>
+          <div class="text-sm text-slate-600 font-bold">Consumption: ${req.consumption_unit || 0}</div>
+          <div class="text-sm text-slate-600 font-bold">Total: ₹${req.total || 0}</div>
           <div class="text-sm text-slate-600">Odometer: ${req.odometer || "—"}</div>
           <div class="text-sm text-slate-600">Remark: ${req.remark || "—"}</div>
           ${mapLink}
@@ -3176,12 +3176,12 @@ async function rejectFuelRequest(id) {
   <div class="max-w-6xl mx-auto bg-white rounded-xl shadow p-6">
     <div class="flex justify-between items-center mb-4">
       <h2 class="text-2xl font-semibold">All Fuel Requests Report</h2>
-<div class="flex gap-2">
+<!-- <div class="flex gap-2">
   <button class="bg-green-600 text-white px-3 py-1 rounded" onclick="exportCSV()">CSV</button>
   <button class="bg-purple-600 text-white px-3 py-1 rounded" onclick="exportExcel()">Excel</button>
   <button class="bg-red-600 text-white px-3 py-1 rounded" onclick="exportPDF()">PDF</button>
   <button class="bg-red-700 text-white px-3 py-1 rounded" onclick="deleteSelected()" title="Delete Selected"><span style="font-size:18px;">🗑️</span></button>
-</div>
+</div> -->
 
       <div class="flex gap-2">
         <button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="go('pageFuelApprovals')">← Back</button>
@@ -3200,7 +3200,19 @@ async function rejectFuelRequest(id) {
       <div class="md:col-span-2 flex gap-2">
         <button id="allSearchBtn" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700" onclick="searchAllFuelRequests()">Search</button>
         <button id="allClearBtn" class="bg-gray-200 px-4 py-2 rounded hover:bg-gray-300" onclick="clearAllFilters()">Clear</button>
+        <!-- <button class="bg-red-700 text-white px-3 py-1 rounded" onclick="deleteSelected()" title="Delete Selected"><span style="font-size:18px;">🗑️</span></button> -->
       </div>
+      <div class="flex gap-2">
+  <button class="bg-green-600 text-white px-3 py-1 rounded" onclick="exportCSV()">CSV</button>
+  <button class="bg-purple-600 text-white px-3 py-1 rounded" onclick="exportExcel()">Excel</button>
+  <button class="bg-red-600 text-white px-3 py-1 rounded" onclick="exportPDF()">PDF</button>
+  <button class="bg-red-700 text-white px-3 py-1 rounded" onclick="deleteSelected()" title="Delete Selected"><span style="font-size:18px;">🗑️</span></button>
+</div>
+    <div class="md:col-span-4 mt-3 flex flex-col sm:flex-row sm:items-center sm:justify-end gap-3">
+      <div class="text-sm text-slate-700">Total Consumption: <span id="allTotalConsumption" class="font-semibold">0</span></div>
+      <div class="text-sm text-slate-700">Grand Total: <span id="allGrandTotal" class="font-semibold">0</span></div>
+    </div>
+    
     </div>
 
     <div class="overflow-x-auto">
@@ -3223,21 +3235,41 @@ async function rejectFuelRequest(id) {
             <th class="px-3 py-2 border">Created By</th>
             <th class="px-3 py-2 border">Created At</th>
             <th class="px-3 py-2 border">Approved By</th>
-            <th class="px-3 py-2 border">Approved At</th>
+            <th class="px-3 py-2 border">Approved At</th><th class="px-3 py-2 border">Map</th>
           </tr>
           <tr id="allFilterRow" class="bg-white">
             <th></th>
             <th></th>
             <th class="px-2 py-1 border"><input class="w-full p-1 border rounded text-sm" data-col="id" oninput="applyAllFilters()" placeholder="Search"></th>
             <th class="px-2 py-1 border"><input class="w-full p-1 border rounded text-sm" data-col="created_at" oninput="applyAllFilters()" placeholder="YYYY-MM-DD"></th>
-            <th class="px-2 py-1 border"><input class="w-full p-1 border rounded text-sm" data-col="vehicle_name" oninput="applyAllFilters()" placeholder="Vehicle"></th>
-            <th class="px-2 py-1 border"><input class="w-full p-1 border rounded text-sm" data-col="vendor_name" oninput="applyAllFilters()" placeholder="Vendor"></th>
-            <th class="px-2 py-1 border"><input class="w-full p-1 border rounded text-sm" data-col="fuel_type" oninput="applyAllFilters()" placeholder="Type"></th>
+            <th class="px-2 py-1 border">
+      <div class="flex items-center gap-1">
+        <input readonly class="hidden w-full p-1 border rounded text-sm filter-readonly" data-col="vehicle_name" placeholder="Vehicle" oninput="applyAllFilters()">
+        <button class="filter-toggle-btn px-2 py-1 rounded text-sm" onclick="openFilterDropdown('vehicle_name', this)" title="Filter Vehicle">▾</button>
+      </div>
+    </th>
+            <th class="px-2 py-1 border">
+      <div class="flex items-center gap-1">
+        <input readonly class="hidden w-full p-1 border rounded text-sm filter-readonly" data-col="vendor_name" placeholder="Vendor" oninput="applyAllFilters()">
+        <button class="filter-toggle-btn px-2 py-1 rounded text-sm" onclick="openFilterDropdown('vendor_name', this)" title="Filter Vendor">▾</button>
+      </div>
+    </th>
+            <th class="px-2 py-1 border">
+      <div class="flex items-center gap-1">
+        <input readonly class="hidden w-full p-1 border rounded text-sm filter-readonly" data-col="fuel_type" placeholder="Fuel Type" oninput="applyAllFilters()">
+        <button class="filter-toggle-btn px-2 py-1 rounded text-sm" onclick="openFilterDropdown('fuel_type', this)" title="Filter Fuel Type">▾</button>
+      </div>
+    </th>
             <th class="px-2 py-1 border"><input class="w-full p-1 border rounded text-sm" data-col="odometer" oninput="applyAllFilters()" placeholder="Odo"></th>
             <th class="px-2 py-1 border"><input class="w-full p-1 border rounded text-sm" data-col="rate_per_unit" oninput="applyAllFilters()" placeholder="Rate"></th>
             <th class="px-2 py-1 border"><input class="w-full p-1 border rounded text-sm" data-col="consumption_unit" oninput="applyAllFilters()" placeholder="Consumption"></th>
             <th class="px-2 py-1 border"><input class="w-full p-1 border rounded text-sm" data-col="total" oninput="applyAllFilters()" placeholder="Total"></th>
-            <th class="px-2 py-1 border"><input class="w-full p-1 border rounded text-sm" data-col="status" oninput="applyAllFilters()" placeholder="Status"></th>
+            <th class="px-2 py-1 border">
+      <div class="flex items-center gap-1">
+        <input readonly class="hidden w-full p-1 border rounded text-sm filter-readonly" data-col="status" placeholder="Status" oninput="applyAllFilters()">
+        <button class="filter-toggle-btn px-2 py-1 rounded text-sm" onclick="openFilterDropdown('status', this)" title="Filter Status">▾</button>
+      </div>
+    </th>
             <th class="px-2 py-1 border"><input class="w-full p-1 border rounded text-sm" data-col="remark" oninput="applyAllFilters()" placeholder="Remark"></th>
             <th class="px-2 py-1 border"><input class="w-full p-1 border rounded text-sm" data-col="created_by" oninput="applyAllFilters()" placeholder="User"></th>
             <th class="px-2 py-1 border"><input class="w-full p-1 border rounded text-sm" data-col="created_at" oninput="applyAllFilters()" placeholder="Created At"></th>
@@ -3272,7 +3304,7 @@ function toggleSelectAll(chk){
 }
 
 function applyAllFilters(){
-  const filters = {};
+const filters = {};
   document.querySelectorAll('#allFilterRow input[data-col]').forEach(inp=>{
     const v = (inp.value||'').trim().toLowerCase();
     if(v) filters[inp.dataset.col] = v;
@@ -3296,8 +3328,16 @@ function applyAllFilters(){
     }
     return true;
   });
-
+  // compute totals for visible rows
+  const totalConsumption = rows.reduce((sum, r) => sum + (Number(r.consumption_unit) || 0), 0);
+  const grandTotal = rows.reduce((sum, r) => sum + (Number(r.total) || 0), 0);
+  const tcEl = document.getElementById('allTotalConsumption');
+  const gtEl = document.getElementById('allGrandTotal');
+  if(tcEl) tcEl.textContent = Number(totalConsumption).toFixed(2);
+  if(gtEl) gtEl.textContent = Number(grandTotal).toFixed(2);
   renderAllReqRows(rows);
+  // ensure select-all is reset
+  const selAll = document.getElementById('allSelectAll'); if(selAll) selAll.checked = false;
 }
 
 function renderAllReqRows(rows){
@@ -3327,7 +3367,7 @@ function renderAllReqRows(rows){
       <td class="px-2 py-2 border">${escapeHtml(r.created_by||'')}</td>
       <td class="px-2 py-2 border">${r.created_at ? new Date(r.created_at).toLocaleString() : '—'}</td>
       <td class="px-2 py-2 border">${escapeHtml(r.approved_by||'')}</td>
-      <td class="px-2 py-2 border">${r.approved_at ? new Date(r.approved_at).toLocaleString() : '—'}</td>
+      <td class="px-2 py-2 border">${r.approved_at ? new Date(r.approved_at).toLocaleString() : '—'}</td>\n      <td class="px-2 py-2 border text-center">${(r.lat && r.lng) ? `<a class='text-blue-600 underline text-sm' href='#' onclick="openMapView('${r.lat}','${r.lng}');return false;">Map</a>` : '—'}</td>
     `;
     tbody.appendChild(tr);
   });
@@ -3404,6 +3444,9 @@ async function searchAllFuelRequests(){
   }
 }
 </script>
+
+<!-- Filter dropdown container (reused) -->
+<div id="filterDropdownContainer" class="hidden fixed z-60 bg-white border rounded shadow p-2" style="min-width:160px; max-height:260px; overflow:auto;"></div>
 <!-- END All Requests Page -->
 
 
@@ -3594,6 +3637,7 @@ async function exportPDF() {
 
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation: "landscape" });
+  
 
   const columns = [
     { header: "Request ID", dataKey: "id" },
@@ -3645,5 +3689,96 @@ async function exportPDF() {
   doc.save(filename);
 }
 </script>
+
+<script>
+function openFilterDropdown(col, btn){
+  const container = document.getElementById('filterDropdownContainer');
+  if(!container) return;
+  const current = _allReqData || [];
+  const vals = Array.from(new Set(current.map(r => (r[col]===null||r[col]===undefined)?'':String(r[col])))).filter(v=>v!=='').sort((a,b)=>a.localeCompare(b));
+  let html = '<div style="padding:6px;"><div style="font-weight:600;margin-bottom:6px;">Filter: '+col+'</div>';
+  html += `<div class="py-1"><a href="#" onclick="clearDropdownFilter('`+col+`');return false;" style="display:block;padding:6px;border-radius:4px;">— Clear filter —</a></div>`;
+  vals.forEach(v=>{
+    const esc = String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+    html += `<div class="py-1"><a href="#" onclick="selectDropdownFilter('`+col+`','`+esc+`');return false;" style="display:block;padding:6px;border-radius:4px;">${esc}</a></div>`;
+  });
+  html += '</div>';
+  container.innerHTML = html;
+  const rect = btn.getBoundingClientRect();
+  container.style.left = Math.max(8, rect.left)+'px';
+  container.style.top = (rect.bottom + window.scrollY + 6) + 'px';
+  container.classList.remove('hidden');
+  setTimeout(()=>{
+    function outside(e){
+      if(!container.contains(e.target) && e.target !== btn){
+        container.classList.add('hidden');
+        window.removeEventListener('click', outside);
+      }
+    }
+    window.addEventListener('click', outside);
+  }, 10);
+}
+
+function selectDropdownFilter(col, value){
+  const inp = document.querySelector(`#allFilterRow input[data-col="${col}"]`);
+  if(inp){
+    inp.value = value;
+    containerHide();
+    applyAllFilters();
+  }
+}
+function clearDropdownFilter(col){
+  const inp = document.querySelector(`#allFilterRow input[data-col="${col}"]`);
+  if(inp){
+    inp.value = '';
+    containerHide();
+    applyAllFilters();
+  }
+}
+function containerHide(){ const c=document.getElementById('filterDropdownContainer'); if(c) c.classList.add('hidden'); }
+
+// Mobile tweaks for buttons
+function adjustButtonsForMobile(){
+  const wrap = document.querySelector('#pageAllRequests .flex.gap-2');
+  if(!wrap) return;
+  if(window.innerWidth < 640){
+    wrap.querySelectorAll('button').forEach(b=>{
+      b.classList.add('px-2','py-1');
+      const spanText = b.querySelector('.btn-text');
+      if(spanText) spanText.style.display='none';
+    });
+  } else {
+    wrap.querySelectorAll('button').forEach(b=>{
+      b.classList.remove('px-2','py-1');
+      const spanText = b.querySelector('.btn-text');
+      if(spanText) spanText.style.display='inline';
+    });
+  }
+}
+window.addEventListener('resize', adjustButtonsForMobile);
+window.addEventListener('load', adjustButtonsForMobile);
+
+// Map view helper
+function openMapView(lat, lng){
+  if(!lat || !lng){ alert('No location available for this request'); return; }
+  const url = `https://www.google.com/maps?q=${encodeURIComponent(lat)},${encodeURIComponent(lng)}`;
+  window.open(url, '_blank');
+}
+
+// ensure totals update when renderAllReqRows called (wrap if exists)
+if(typeof renderAllReqRows === 'function'){
+  const _origRender = renderAllReqRows;
+  renderAllReqRows = function(rows){
+    _origRender(rows);
+    const totalConsumption = (rows||[]).reduce((s,r)=>s+(Number(r.consumption_unit)||0),0);
+    const grandTotal = (rows||[]).reduce((s,r)=>s+(Number(r.total)||0),0);
+    const tc = document.getElementById('allTotalConsumption');
+    const gt = document.getElementById('allGrandTotal');
+    if(tc) tc.textContent = Number(totalConsumption).toFixed(2);
+    if(gt) gt.textContent = Number(grandTotal).toFixed(2);
+  }
+}
+</script>
+
 </body>
 </html>
