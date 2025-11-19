@@ -2277,7 +2277,7 @@ async function clearAllCaches(btn){
       </div>
 
       <div class="col-span-full flex justify-end mt-4">
-        <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 w-full sm:w-auto">
+        <button type="submit" id="submitFuelBtn" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 w-full sm:w-auto">
           Submit Fuel Request
         </button>
       </div>
@@ -2600,6 +2600,21 @@ function getSessionLocally(){
 }
 </script>
 <script>
+
+  // Disable a button while request is processing
+function lockButton(btn, text="Submitting...") {
+  if (!btn) return;
+  btn.disabled = true;
+  btn.dataset.originalText = btn.textContent;
+  btn.innerHTML = `<span class="animate-pulse">${text}</span>`;
+}
+
+function unlockButton(btn) {
+  if (!btn) return;
+  btn.disabled = false;
+  btn.innerHTML = btn.dataset.originalText || "Submit";
+}
+
 async function loadFuelRequestForm(){
 const vehicleSel = document.getElementById('vehicleSelect');
   const vendorSel = document.getElementById('vendorSelect');
@@ -2686,14 +2701,18 @@ const vehicleSel = document.getElementById('vehicleSelect');
     };
 
     console.log('🧾 Submitting record:', record);
+     const btn = document.getElementById("submitFuelBtn");
+     lockButton(btn);   // ⛔ disable immediately
 
     const { error } = await SB.from('fuel_requests').insert([record]);
     if(error){
       console.error('❌ Supabase Insert Error:', error);
       alert('❌ Failed to submit fuel request: ' + error.message);
+      unlockButton(btn);
     } else {
       alert('✅ Fuel request submitted successfully!');
       document.getElementById('fuelForm').reset();
+      unlockButton(btn);
     }
   };
 }
@@ -2706,12 +2725,6 @@ function toBase64(file){
     reader.onerror = reject;
   });
 }
-
-// Load form when Fuel Request page opens
-// document.addEventListener('DOMContentLoaded', ()=>{
-//   const fuelPage = document.getElementById('pageFuelRequest');
-//   if(fuelPage) loadFuelRequestForm();
-// });
 </script>
 
 
