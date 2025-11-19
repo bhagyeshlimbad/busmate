@@ -2223,7 +2223,8 @@ async function clearAllCaches(btn){
   <div class="max-w-3xl mx-auto bg-white rounded-xl shadow p-6">
     <div class="flex justify-between items-center mb-4">
       <h2 class="text-2xl font-semibold">Fuel Request Form</h2>
-      <button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="go('pageHome')">← Back</button>
+      <!-- <button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="go('pageHome')">← Back</button> -->
+      <div class="page-back"><button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="go('pageHome')">← Back</button></div>
     </div>
 
     <form id="fuelForm" class="grid gap-4 sm:grid-cols-2">
@@ -2761,7 +2762,8 @@ document.addEventListener('DOMContentLoaded', ()=> {
   <div class="max-w-5xl mx-auto bg-white rounded-xl shadow p-6">
     <div class="flex justify-between items-center mb-4">
       <h2 class="text-2xl font-semibold">My Fuel Requests</h2>
-      <button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="go('pageHome')">← Back</button>
+      <!-- <button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="go('pageHome')">← Back</button> -->
+      <div class="page-back"><button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="go('pageHome')">← Back</button></div>
     </div>
     <div id="myRequestsContainer" class="overflow-x-auto">
       <table class="w-full text-sm border-collapse border border-gray-200">
@@ -2803,7 +2805,7 @@ const s = typeof getSessionLocally === "function" ? getSessionLocally() : null;
   // ---- PAGE STRUCTURE ----
   page.innerHTML = `
     <div class="page-back mb-3">
-      <button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="go('pageHome')">← Back</button>
+      <div class="page-back"><button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="go('pageHome')">← Back</button></div>
     </div>
     <h2 class="text-lg font-semibold mb-3">My Fuel Requests</h2>
     <div class="bg-white rounded-xl shadow p-4 overflow-x-auto">
@@ -3014,7 +3016,7 @@ async function renderFuelApprovals() {
   page.innerHTML = `
   
     <div class="flex justify-between items-center mb-3">
-      <div><button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="go('pageHome')">← Back</button></div>
+      <div class="page-back"><button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="go('pageHome')">← Back</button></div>
       <div><button class="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700" onclick="go('pageAllRequests')">All Request</button></div>
     </div>
     <h2 class="text-lg font-semibold mb-3">Pending Fuel Approvals</h2>
@@ -3197,7 +3199,8 @@ async function rejectFuelRequest(id) {
 </div> -->
 
       <div class="flex gap-2">
-        <button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="go('pageFuelApprovals')">← Back</button>
+        <!-- <button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="go('pageFuelApprovals')">← Back</button> -->
+        <div class="page-back"><button class="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300" onclick="go('pageFuelApprovals')">← Back</button></div>
       </div>
     </div>
 
