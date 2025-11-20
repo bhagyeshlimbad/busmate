@@ -823,9 +823,9 @@ async function applyHeader(){
   document.getElementById('roleLabel').textContent = s.role;
 
   // show tiles based on role
-  ['tileCompanies','tileUsers','tileLocations','tileTrips','tileStart','tileReports','tileVendors'].forEach(id=>document.getElementById(id).classList.add('hidden'));
+  ['tileCompanies','tileUsers','tileLocations','tileTrips','tileStart','tileReports','tileVendors','tileFuelApprovals','tileFuelRequest','tileMyRequests'].forEach(id=>document.getElementById(id).classList.add('hidden'));
   if(s.user==='bhagyesh' || s.role==='Master'){
-    ['tileCompanies','tileUsers','tileLocations','tileTrips','tileStart','tileReports','tileVendors'].forEach(id=>{ const el=document.getElementById(id); if(el) el.classList.remove('hidden'); });
+    ['tileCompanies','tileUsers','tileLocations','tileTrips','tileStart','tileReports','tileVendors','tileFuelApprovals','tileFuelRequest','tileMyRequests'].forEach(id=>{ const el=document.getElementById(id); if(el) el.classList.remove('hidden'); });
   } else if(s.role==='Admin'){
     ['tileUsers','tileLocations','tileTrips','tileStart','tileReports','tileVendors'].forEach(id=>document.getElementById(id).classList.remove('hidden'));
   } else if(s.role==='Operator'){
@@ -1557,7 +1557,7 @@ async function exportTripsExcel(){ const runs = await db_select('runs'); const r
 async function exportLoginsExcel(){ const logs = await db_select('logins'); const ws = XLSX.utils.json_to_sheet(logs); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'LoginLogs'); XLSX.writeFile(wb, 'login_logs.xlsx'); }
 
 /* Help */
-function showHelp(){ alert('BusMate prototype — Master: bhagyesh/bhagyesh; Admin: admin/admin; Operator: operator/operator. Serve via static server for geolocation.'); }
+function showHelp(){ alert('Please Reach Out to Admin'); }
 
 /* Boot */
 (async function boot(){
@@ -2603,16 +2603,26 @@ function getSessionLocally(){
 <script>
 
   // Disable a button while request is processing
-function lockButton(btn, text="Submitting...") {
+function lockButton(btn, text = "Submitting...") {
   if (!btn) return;
   btn.disabled = true;
   btn.dataset.originalText = btn.textContent;
+
+  // Apply red color while loading
+  btn.classList.add("bg-red-600", "text-white");
+  btn.classList.remove("bg-blue-600", "bg-green-600");
+
   btn.innerHTML = `<span class="animate-pulse">${text}</span>`;
 }
 
 function unlockButton(btn) {
   if (!btn) return;
   btn.disabled = false;
+
+  // Restore original button color (assuming blue)
+  btn.classList.remove("bg-red-600");
+  btn.classList.add("bg-blue-600", "text-white");
+
   btn.innerHTML = btn.dataset.originalText || "Submit";
 }
 
