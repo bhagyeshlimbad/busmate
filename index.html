@@ -1347,7 +1347,7 @@ function updateUpcomingAndCheck(lat, lng, speedMs){
       // pre-announce
       if(!loc._preAnnounced && dist <= preRadius){
         loc._preAnnounced = true;
-        try{ playAnnouncement(loc); 
+        // try{ playAnnouncement(loc); 
     // --- AUTO-DETECTION: check if we're within any stop radius and announce ---
     try{
       if(runtime && runtime.active && Array.isArray(runtime.active.locs)){
@@ -1490,6 +1490,21 @@ function centerCurrentGPS(){ if(!navigator.geolocation) return alert('Geolocatio
 /* TTS and audio handling */
 function setVolume(v){ runtime.ttsVolume = Number(v); toast('Volume: ' + runtime.ttsVolume); }
 function speak(text){ try{ const u = new SpeechSynthesisUtterance(text); u.volume = Number(runtime.ttsVolume || 1.0); speechSynthesis.speak(u); }catch(e){ } }
+
+function playAnnouncement(loc){
+  if(!loc) return;
+  try{
+    if(loc.audio_url){
+      const a = new Audio(loc.audio_url);
+      a.volume = Number(runtime.ttsVolume || 1.0);
+      a.play().catch(e=>{ if(loc.msg) speak(loc.msg); });
+    } else if(loc.msg && loc.msg.trim()){
+      speak(loc.msg);
+    } else {
+      speak('Next stop');
+    }
+  }catch(e){ }
+}
 
 /* Periodic refresh */
 function startPeriodicRefreshImmediate(){
