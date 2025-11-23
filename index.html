@@ -1347,7 +1347,7 @@ function updateUpcomingAndCheck(lat, lng, speedMs){
       // pre-announce
       if(!loc._preAnnounced && dist <= preRadius){
         loc._preAnnounced = true;
-        // try{ playAnnouncement(loc); 
+        try{ playAnnouncement(loc); 
     // --- AUTO-DETECTION: check if we're within any stop radius and announce ---
     try{
       if(runtime && runtime.active && Array.isArray(runtime.active.locs)){
@@ -1495,13 +1495,15 @@ function playAnnouncement(loc){
   if(!loc) return;
   try{
     if(loc.audio_url){
-      const a = new Audio(loc.audio_url);
-      a.volume = Number(runtime.ttsVolume || 1.0);
-      a.play().catch(e=>{ if(loc.msg) speak(loc.msg); });
-    } else if(loc.msg && loc.msg.trim()){
-      speak(loc.msg);
+      // const a = new Audio(loc.audio_url);
+      // a.volume = Number(runtime.ttsVolume || 1.0);
+      // a.play().catch(e=>{ if(loc.msg) speak(loc.msg); });  // commenting this line to avoid duplication
+      console.log('Avoiding Duplicate audio overlap');
+    // } else if(loc.msg && loc.msg.trim()){
+      // speak(loc.msg);
     } else {
-      speak('Next stop');
+      // speak('Next stop');
+      console.log('🔊 else not playing');
     }
   }catch(e){ }
 }
