@@ -109,7 +109,8 @@ function playAnnouncementById(locId){
     // stop any currently playing audio or TTS
     try{ if(_currentAudio){ _currentAudio.pause(); _currentAudio.src=''; _currentAudio = null; } }catch(e){}
     try{ speechSynthesis.cancel(); }catch(e){}
-
+    // Visual: mark as arrived (turn circle green + add ✅ overlay + update popup)
+    try{ markLocationArrived(locId); }catch(e){ console.error('markLocationArrived failed', e); }
     console.log('🔊 Playing announcement for', loc.name, 'ID:', locId);
     markLocationArrived(locId)
     if(loc.audio_url){
@@ -133,8 +134,7 @@ function playAnnouncementById(locId){
       speechSynthesis.speak(utter);
     }
 
-    // Visual: mark as arrived (turn circle green + add ✅ overlay + update popup)
-    try{ markLocationArrived(locId); }catch(e){ console.error('markLocationArrived failed', e); }
+
 
   }catch(e){
     console.error('playAnnouncementById error', e);
