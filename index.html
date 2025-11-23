@@ -111,6 +111,7 @@ function playAnnouncementById(locId){
     try{ speechSynthesis.cancel(); }catch(e){}
 
     console.log('🔊 Playing announcement for', loc.name, 'ID:', locId);
+    markLocationArrived(locId)
     if(loc.audio_url){
       _currentAudio = new Audio(loc.audio_url);
       _currentAudio.volume = (runtime && runtime.ttsVolume) ? runtime.ttsVolume : 1;
@@ -2341,7 +2342,6 @@ async function clearAllCaches(btn){
       <div>
         <label class="block text-sm">Status</label>
         <select id="editStatusSelect" class="w-full p-2 border rounded">
-          <option>Pending</option>
           <option>Pending Review</option>
           <option>Approved</option>
           <option>Rejected</option>
@@ -2902,7 +2902,7 @@ const s = typeof getSessionLocally === "function" ? getSessionLocally() : null;
 
       const status = req.status || "—";
       const remarks = req.remarks || req.remark || "—";
-      const canEdit = ["pending", "pending review"].includes(status.toLowerCase());
+      const canEdit = ["pending", "pending review","rejected"].includes(status.toLowerCase());
       const dateText = req.created_at
         ? new Date(req.created_at).toLocaleDateString()
         : "—";
@@ -2924,7 +2924,7 @@ const s = typeof getSessionLocally === "function" ? getSessionLocally() : null;
           ${
             canEdit
               ? `<button class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded"
-                   onclick="editFuelRequest_open('${req.id}', true)">Edit</button>`
+                   onclick="editFuelRequest_open('${req.id}', false)">Edit</button>`
               : `<span class="text-slate-400 text-xs">—</span>`
           }
         </td>
@@ -3049,7 +3049,8 @@ async function renderFuelApprovals() {
       .select("*")
       .eq("company_id", companyId)
       .eq("status", "Pending Review")
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .limit(5); // Limit set to 5, due to free-tier limit
 
     if (error) throw error;
     if (!rows || rows.length === 0) {
@@ -3110,6 +3111,8 @@ async function renderFuelApprovals() {
               onclick="approveFuelRequest('${req.id}')">Approve</button>
             <button class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded"
               onclick="rejectFuelRequest('${req.id}')">Reject</button>
+            <button class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded"
+                   onclick="editFuelRequest_open('${req.id}',false)">Edit</button>
           </div>
         </div>
         <div class="mt-3 md:mt-0 md:w-64">${photoHtml}</div>
