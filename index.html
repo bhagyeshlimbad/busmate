@@ -1347,7 +1347,7 @@ function updateUpcomingAndCheck(lat, lng, speedMs){
       // pre-announce
       if(!loc._preAnnounced && dist <= preRadius){
         loc._preAnnounced = true;
-        // try{ playAnnouncement(loc); 
+        try{ playAnnouncement(loc); 
     // --- AUTO-DETECTION: check if we're within any stop radius and announce ---
     try{
       if(runtime && runtime.active && Array.isArray(runtime.active.locs)){
@@ -1418,7 +1418,7 @@ function updateUpcomingAndCheck(lat, lng, speedMs){
         }catch(e){}
 
         // announcement on arrival
-        // try{ playAnnouncement(loc); }catch(e){ if(typeof speak === 'function') speak('Arrived at ' + loc.name); }
+        try{ playAnnouncement(loc); }catch(e){ if(typeof speak === 'function') speak('Arrived at ' + loc.name); }
 
         // advance trip idx if applicable
         try{ if(typeof trip.idx === 'number' && rIdx >= trip.idx) trip.idx = rIdx + 1; }catch(e){}
@@ -1497,7 +1497,7 @@ function playAnnouncement(loc){
     if(loc.audio_url){
       const a = new Audio(loc.audio_url);
       a.volume = Number(runtime.ttsVolume || 1.0);
-      a.play().catch(e=>{ if(loc.msg) speak(loc.msg); });
+      // a.play().catch(e=>{ if(loc.msg) speak(loc.msg); });  // coomenting this line to avoid duplication
     } else if(loc.msg && loc.msg.trim()){
       speak(loc.msg);
     } else {
