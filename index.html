@@ -1491,23 +1491,6 @@ function centerCurrentGPS(){ if(!navigator.geolocation) return alert('Geolocatio
 function setVolume(v){ runtime.ttsVolume = Number(v); toast('Volume: ' + runtime.ttsVolume); }
 function speak(text){ try{ const u = new SpeechSynthesisUtterance(text); u.volume = Number(runtime.ttsVolume || 1.0); speechSynthesis.speak(u); }catch(e){ } }
 
-function playAnnouncement(loc){
-  if(!loc) return;
-  try{
-    if(loc.audio_url){
-      // const a = new Audio(loc.audio_url);
-      // a.volume = Number(runtime.ttsVolume || 1.0);
-      // a.play().catch(e=>{ if(loc.msg) speak(loc.msg); });  // commenting this line to avoid duplication
-      console.log('Avoiding Duplicate audio overlap');
-    // } else if(loc.msg && loc.msg.trim()){
-      // speak(loc.msg);
-    } else {
-      // speak('Next stop');
-      console.log('🔊 else not playing');
-    }
-  }catch(e){ }
-}
-
 /* Periodic refresh */
 function startPeriodicRefreshImmediate(){
   if(autoRefreshIntervalId) clearInterval(autoRefreshIntervalId);
