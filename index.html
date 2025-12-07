@@ -2926,7 +2926,7 @@ const s = typeof getSessionLocally === "function" ? getSessionLocally() : null;
           ${
             canEdit
               ? `<button class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded"
-                   onclick="editFuelRequest_open('${req.id}', false)">Edit</button>`
+                   onclick="editFuelRequest_open('${req.id}', true)">Edit</button>`
               : `<span class="text-slate-400 text-xs">—</span>`
           }
         </td>
